@@ -13,7 +13,7 @@ const Game = function (code, host) {
   this.RiichiBang = 0;
   this.RoundInProgress = false;
 
-  this.MainCards = [];
+  this.MainCards = [];  // 牌山
   this.RestCardsNum = 70;
   this.LogQueue = [];             // 日志队列
   this.IsWriting = false;         // 日志写入锁
@@ -59,8 +59,11 @@ const Game = function (code, host) {
   // 添加玩家
   this.AddPlayer = (playerName, socket) => {
     const player = new Player(playerName, socket);
-    // 初始化OutCards为15张固定的牌
-    player.OutCards = [
+
+
+
+    // 初始化RiverCards为15张固定的牌
+    player.RiverCards = [
       { Value: 1, Type: 'm' }, { Value: 2, Type: 'm' }, { Value: 3, Type: 'm' },
       { Value: 4, Type: 'm' }, { Value: 5, Type: 'm' }, { Value: 6, Type: 'm' },
       { Value: 7, Type: 'm' }, { Value: 8, Type: 'm' }, { Value: 9, Type: 'm' },
@@ -69,6 +72,9 @@ const Game = function (code, host) {
     ];
     player.DrawCard = { Value: 1, Type: 's' };
     this.MainCards = [{},{},{},{},{ Value: 2, Type: 'm' }];
+
+
+
     this.Players.push(player);
     // 分配位置：如果4人齐，随机分配0-3
     if (this.Players.length === 4) {
@@ -120,7 +126,7 @@ const Game = function (code, host) {
           Position: p.Position,
           Points: p.Points,
           HandCards: p.HandCards,
-          OutCards: p.OutCards,
+          RiverCards: p.RiverCards,
           ShowCards: p.ShowCards,
           DrawCard: p.DrawCard
         })),

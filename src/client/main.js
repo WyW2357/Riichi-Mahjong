@@ -208,7 +208,7 @@ socket.on('rerender', function (data) {
       $('#gameDiv').append('<span class="mj-card ' + dir + '" style="position:absolute;' + style + '">' + back + front + '</span>');
     }
     // 渲染河牌
-    (player.OutCards || []).forEach(function(card, idx) {
+    (player.RiverCards || []).forEach(function(card, idx) {
       var pos = positions[dir].river[idx];
       var back = '<img class="mj-back" src="img/Front.svg">';
       var front = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
