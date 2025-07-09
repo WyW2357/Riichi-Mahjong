@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Riichi Mahjong
 
 Riichi Mahjong 是一个日式立直麻将 Web 游戏项目，目前为项目结构和资源准备阶段。
@@ -47,3 +48,6 @@ Riichi Mahjong/
 ---
 
 如需协助搭建前端页面或后端服务，请随时提出！ 
+=======
+# Riichi-Mahjong
+>>>>>>> b3843ec7a696db97ba111ea74f83e3f05c397cb5
