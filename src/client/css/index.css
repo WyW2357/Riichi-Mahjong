@@ -1,0 +1,25 @@
+body {
+  background: #207744;
+  min-height: 100vh;
+  margin: 0;
+  font-family: 'Metropolis', 'Roboto', 'Arial', sans-serif;
+}
+
+.container {
+  max-width: 1200px;
+}
+
+/* 居中主按钮框 */
+#mainContent {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-box {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}

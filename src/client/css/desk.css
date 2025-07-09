@@ -1,0 +1,14 @@
+body, html {
+  overflow: hidden;
+}
+
+#gameDiv {
+  position: relative;
+  width: 850px;
+  height: 850px;
+  margin: 40px auto 0 auto;
+  background: #3cb371;
+  border-radius: 32px;
+  box-shadow: 0 0 24px #2226;
+  overflow: visible;
+}

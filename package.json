@@ -1,0 +1,14 @@
+{
+  "name": "japanese-riichi-mahjong",
+  "version": "1.0.0",
+  "description": "A Japanese Riichi Mahjong game made using Socket.io, Node.js, and Express",
+  "main": "src/server/app.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node ./src/server/app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  }
+}
