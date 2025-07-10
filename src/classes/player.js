@@ -9,6 +9,7 @@ const Player = function (playername, socket) {
   this.Points = 25000;
   this.Position = 0;
   this.Status = '';
+  this.Options = [];
 
   //摸牌
   this.AddCard = (card) => {

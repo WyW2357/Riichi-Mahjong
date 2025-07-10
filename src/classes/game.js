@@ -10,7 +10,7 @@ const Game = function (code, host) {
   this.GameCode = code;           // 游戏房间名称
   this.StageNum = 1;               // 当前局数(1-8)
   this.RoundNum = 0;              // 当前本场数
-  this.RiichiBang = 0;
+  this.RiichiBang = 1;
   this.RoundInProgress = false;
 
   this.MainCards = [];  // 牌山
@@ -64,14 +64,59 @@ const Game = function (code, host) {
 
     // 初始化RiverCards为15张固定的牌
     player.RiverCards = [
-      { Value: 1, Type: 'm' }, { Value: 2, Type: 'm' }, { Value: 3, Type: 'm' },
-      { Value: 4, Type: 'm' }, { Value: 5, Type: 'm' }, { Value: 6, Type: 'm' },
-      { Value: 7, Type: 'm' }, { Value: 8, Type: 'm' }, { Value: 9, Type: 'm' },
-      { Value: 1, Type: 'p' }, { Value: 2, Type: 'p' }, { Value: 3, Type: 'p' },
-      { Value: 4, Type: 'p' }, { Value: 5, Type: 'p' }, { Value: 6, Type: 'p' }
+      { Value: 1, Type: 'm', Turn: false}, { Value: 2, Type: 'm', Turn: false}, { Value: 3, Type: 'm', Turn: false},
+      { Value: 4, Type: 'm', Turn: false}, { Value: 5, Type: 'm', Turn: false}, { Value: 6, Type: 'm', Turn: false},
+      { Value: 7, Type: 'm', Turn: false}, { Value: 8, Type: 'm', Turn: false}, { Value: 9, Type: 'm', Turn: false},
+      { Value: 1, Type: 'p', Turn: false}, { Value: 2, Type: 'p', Turn: true}, { Value: 3, Type: 'p', Turn: false},
+      { Value: 4, Type: 'p', Turn: false}, { Value: 5, Type: 'p', Turn: false}, { Value: 6, Type: 'p', Turn: false}
     ];
     player.DrawCard = { Value: 1, Type: 's' };
-    this.MainCards = [{},{},{},{},{ Value: 2, Type: 'm' }];
+    player.ShowCards = [
+      {
+        Type:'Chi',
+        Cards: [
+          { Value: 1, Type: 's' },
+          { Value: 2, Type: 's' },
+          { Value: 3, Type: 's' }
+        ],
+        Turn: [true, false, false], 
+        Closed: [false, false, false] 
+      },
+      {
+        Type:'Pon',
+        Cards: [
+          { Value: 2, Type: 'p' },
+          { Value: 2, Type: 'p' },
+          { Value: 2, Type: 'p' }
+        ],
+        Turn: [false, true, false], 
+        Closed: [false, false, false] 
+      },
+      {
+        Type:'Kakan',
+        Cards: [
+          { Value: 7, Type: 'm' },
+          { Value: 7, Type: 'm' },
+          { Value: 7, Type: 'm' }
+        ],
+        Turn: [false, false, true],
+        Closed: [false, false, false]
+      },
+      {
+        Type:'Ankan',
+        Cards: [
+          { Value: 9, Type: 's' },
+          { Value: 9, Type: 's' },
+          { Value: 9, Type: 's' },
+          { Value: 9, Type: 's' }
+        ],
+        Turn: [false, false, false, false], 
+        Closed: [true, false, false, true] // 2张盖住，2张明牌
+      }
+    ];
+    player.Status = 'Riichi';
+    player.Options = ['Chi', 'Pon', 'Kan', 'Riichi', 'Ron', 'Tsumo', 'Pass'];
+    this.MainCards = [{},{},{},{ Value: 4, Type: 'm' },{ Value: 2, Type: 'm' }];
 
 
 
@@ -101,7 +146,7 @@ const Game = function (code, host) {
     this.Log('东' + this.StageNum + '局  ' + this.RoundNum + '本场');
     this.Log('玩家信息: ');
     for (let player of this.Players) {
-      this.Log(player.UserName + ' ' + player.HandCards.map(card => card.Value + card.Type).join(' '));
+      this.Log(player.UserName + ' ' + player.HandCards.map(card => card.Value + card.Type).join(' ') + ' ' + player.Position);
     }
     this.Rerender();
   };
@@ -111,7 +156,7 @@ const Game = function (code, host) {
     this.Deck.Shuffle();
     for (let player of this.Players) {
       player.HandCards = [];
-      for(let i = 0; i < 13; i++) player.AddCard(this.Deck.DealRandomCard());
+      for(let i = 0; i < 1; i++) player.AddCard(this.Deck.DealRandomCard());
       player.SortHandCards();
     }
   };
@@ -125,10 +170,12 @@ const Game = function (code, host) {
           UserName: p.UserName,
           Position: p.Position,
           Points: p.Points,
+          Status: p.Status,
           HandCards: p.HandCards,
           RiverCards: p.RiverCards,
           ShowCards: p.ShowCards,
-          DrawCard: p.DrawCard
+          DrawCard: p.DrawCard,
+          Options: p.Options
         })),
         Position: player.Position,
         StageNum: this.StageNum,

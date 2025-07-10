@@ -3,10 +3,11 @@
 .mj-card {
   display: inline-block;
   position: relative;
-  width: 32px;
-  height: 42px;
+  width: 36px;
+  height: 48px;
   vertical-align: middle;
   margin: 0 2px;
+  transform-origin: left top;
 }
 
 .mj-card .mj-back,
@@ -20,9 +21,9 @@
   pointer-events: none;
 }
 
-.mj-card .mj-back { z-index: 0; }
-.mj-card .mj-front { z-index: 1; }
-.mj-card .mj-face { z-index: 2; }
+.mj-card .mj-back { z-index: 1; }
+.mj-card .mj-front { z-index: 2; }
+.mj-card .mj-face { z-index: 3; }
 
 /* 方向旋转 */
 .mj-card.east { transform: none; }

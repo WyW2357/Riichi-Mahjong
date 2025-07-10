@@ -1,0 +1,6 @@
+<svg width="11" height="84" viewBox="0 0 11 84" xmlns="http://www.w3.org/2000/svg">
+  <!-- 白色长方形 -->
+  <rect x="0" y="0" width="11" height="84" rx="3" fill="white" stroke="#ccc" stroke-width="1"/>
+  <!-- 中间红色圆点 -->
+  <circle cx="5.5" cy="42" r="3.5" fill="#ff4444"/>
+</svg> 

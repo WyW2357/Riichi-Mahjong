@@ -4,8 +4,9 @@ body, html {
 
 #gameDiv {
   position: relative;
-  width: 850px;
-  height: 850px;
+  top: -30px;
+  width: 892px;
+  height: 892px;
   margin: 40px auto 0 auto;
   background: #3cb371;
   border-radius: 32px;
