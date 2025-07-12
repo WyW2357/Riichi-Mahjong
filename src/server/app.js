@@ -67,7 +67,43 @@ io.on('connection', (socket) => {
       }
     }
   });
+
+  // 处理玩家按钮行动
+  socket.on('playerAction', (data) => {
+    const game = rooms.find((r) => {
+      const player = r.FindPlayer(socket.id);
+      return player && player.Socket && player.Socket.id == socket.id;
+    });
+    if (game) {
+      const player = game.FindPlayer(socket.id);
+      // 根据不同的行动类型调用相应的处理方法
+      if (data.Action == 'Chi') game.Chi(player);
+      if (data.Action == 'Pon') game.Pon(player);
+      if (data.Action == 'Kan') game.Kan(player);
+      if (data.Action == 'Riichi') game.Riichi(player);
+      if (data.Action == 'Ron') game.Ron(player);
+      if (data.Action == 'Tsumo') game.Tsumo(player);
+      if (data.Action == 'Pass') game.Pass(player);
+    }
+  });
+
+  // 处理玩家点牌行动
+  socket.on('selectCard', (data) => {
+    const game = rooms.find((r) => {
+      const player = r.FindPlayer(socket.id);
+      return player && player.Socket && player.Socket.id == socket.id;
+    });
+    if (game) {
+      const player = game.FindPlayer(socket.id);
+      if(player.Status == 'Waiting'){
+        game.PutOut(player, data.Card, data.Type);
+      }
+    }
+  });
+
 });
+
+  
 
 // 启动服务器
 server.listen(PORT, () => console.log(`正在端口 ${PORT} 运行`));

@@ -8,7 +8,7 @@ const Player = function (playername, socket) {
   this.DrawCard = '';
   this.Points = 25000;
   this.Position = 0;
-  this.Status = '';
+  this.Status = '';   // Waiting
   this.Options = [];
 
   //摸牌
@@ -35,6 +35,16 @@ const Player = function (playername, socket) {
   // 向玩家发送事件
   this.Emit = (eventName, data) => {
     this.Socket.emit(eventName, data);
+  };
+
+  // 移除一张牌
+  this.RemoveCard = (card) => {
+    for (let i = 0; i < this.HandCards.length; i++) {
+      if (this.HandCards[i].Type === card.Type && this.HandCards[i].Value === card.Value) {
+        this.HandCards.splice(i, 1);
+        return;
+      }
+    }
   };
 };
 

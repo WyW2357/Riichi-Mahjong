@@ -10,8 +10,11 @@ const Game = function (code, host) {
   this.GameCode = code;           // 游戏房间名称
   this.StageNum = 1;               // 当前局数(1-8)
   this.RoundNum = 0;              // 当前本场数
-  this.RiichiBang = 1;
+  this.RiichiBang = 0;
   this.RoundInProgress = false;
+  this.PassZhuang = false;
+  this.LastRiverCard = '';        // { Card, Pre}
+  this.Stop = false;
 
   this.MainCards = [];  // 牌山
   this.RestCardsNum = 70;
@@ -59,9 +62,7 @@ const Game = function (code, host) {
   // 添加玩家
   this.AddPlayer = (playerName, socket) => {
     const player = new Player(playerName, socket);
-
-
-
+    /*
     // 初始化RiverCards为15张固定的牌
     player.RiverCards = [
       { Value: 1, Type: 'm', Turn: false}, { Value: 2, Type: 'm', Turn: false}, { Value: 3, Type: 'm', Turn: false},
@@ -113,13 +114,7 @@ const Game = function (code, host) {
         Turn: [false, false, false, false], 
         Closed: [true, false, false, true] // 2张盖住，2张明牌
       }
-    ];
-    player.Status = 'Riichi';
-    player.Options = ['Chi', 'Pon', 'Kan', 'Riichi', 'Ron', 'Tsumo', 'Pass'];
-    this.MainCards = [{},{},{},{ Value: 4, Type: 'm' },{ Value: 2, Type: 'm' }];
-
-
-
+    ];*/
     this.Players.push(player);
     // 分配位置：如果4人齐，随机分配0-3
     if (this.Players.length === 4) {
@@ -138,15 +133,56 @@ const Game = function (code, host) {
     for (let player of this.Players) player.Emit(eventName, data);
   };
 
+  // 查找玩家(使用socketid查找)
+  this.FindPlayer = (socketid) => {
+    for (let player of this.Players) if (player.Socket.id == socketid) return player;
+    return null;
+  };
+
   // 开始新一局
   this.StartNewRound = () => {
+    for (let player of this.Players){
+      player.HandCards = [];
+      player.RiverCards = [];
+      player.ShowCards = [];
+      player.HistoryCards = [];
+      player.DrawCard = '';
+      player.Status = '';
+      player.Options = [];
+    }
     this.DealCards();
+    this.RestCardsNum = 70;
     // 打印所有玩家信息
     this.Log('\n\n=== 新一局开始 ===');
     this.Log('东' + this.StageNum + '局  ' + this.RoundNum + '本场');
     this.Log('玩家信息: ');
     for (let player of this.Players) {
       this.Log(player.UserName + ' ' + player.HandCards.map(card => card.Value + card.Type).join(' ') + ' ' + player.Position);
+      if(player.Position == 0) {
+        this.Draw(player);
+        player.Status = 'Waiting';
+      }
+    }
+    this.MainCards = [{},{},{},{},this.Deck.DealRandomCard()];  // 牌山
+    this.LastRiverCard = [];
+    this.Rerender();
+  };
+
+  // 转到下一个玩家
+  this.MoveToNext = () => {
+    let currentPos = 0;
+    for (let player of this.Players) {
+      if (player.Status == 'Waiting'){
+        player.Status = '';
+        currentPos = player.Position;
+      }  
+    }
+    let nextPos = (currentPos + 1) % 4;
+    for (let player of this.Players) {
+      if (player.Position === nextPos) {
+        this.Draw(player);
+        player.Status = 'Waiting';
+      }
     }
     this.Rerender();
   };
@@ -156,7 +192,7 @@ const Game = function (code, host) {
     this.Deck.Shuffle();
     for (let player of this.Players) {
       player.HandCards = [];
-      for(let i = 0; i < 1; i++) player.AddCard(this.Deck.DealRandomCard());
+      for(let i = 0; i < 13; i++) player.AddCard(this.Deck.DealRandomCard());
       player.SortHandCards();
     }
   };
@@ -187,6 +223,170 @@ const Game = function (code, host) {
       player.Emit('rerender', data);
     }
   };
+
+  // 检查
+  this.Check = () => {
+    this.Stop = false;
+    for (let player of this.Players) {
+      player.Options = [];
+      if(this.CanChi(player)) { player.Options.push('Chi'); this.Stop = true;}
+      if(this.CanPon(player)) { player.Options.push('Pon'); this.Stop = true;}
+      if(this.CanKan(player)) { player.Options.push('Kan'); this.Stop = true;}
+      if(this.CanRiichi(player)) { player.Options.push('Riichi'); this.Stop = true;}
+      if(this.CanRon(player)) { player.Options.push('Ron'); this.Stop = true;}
+      if(this.CanTsumo(player)) { player.Options.push('Tsumo'); this.Stop = true;}
+      if(this.CanPass(player)) { player.Options.push('Pass'); this.Stop = true;}
+    }
+    if(this.Stop){
+      for (let player of this.Players) player.Status = '';
+      this.Rerender();
+    }
+  };
+
+  // 抓牌
+  this.Draw = (theplayer) => {
+    theplayer.DrawCard = this.Deck.DealRandomCard();
+    this.RestCardsNum--;
+    this.Check();
+  };
+
+  // 插牌
+  this.PutIn = (theplayer) => {
+    theplayer.AddCard(theplayer.DrawCard);
+    theplayer.SortHandCards();
+    theplayer.DrawCard = '';
+  };
+
+  // 打牌
+  this.PutOut = (theplayer, card, type) => {
+    // 复制一份card，带Turn属性
+    let riverCard = Object.assign({}, card, { Turn: false });
+    theplayer.RiverCards.push(riverCard);
+    theplayer.HistoryCards.push(card);
+    if(type == 'draw') theplayer.DrawCard = '';
+    if(type == 'hand') {
+      theplayer.RemoveCard(card);
+      if(!this.Stop)
+      this.PutIn(theplayer);
+    }
+    this.LastRiverCard = {Card: card, Pre: theplayer.Position};
+    this.Check();
+    if(!this.Stop) this.MoveToNext();
+  };
+
+  // 吃
+  this.Chi = () => {
+
+  };
+
+  this.CanChi = (theplayer) => {
+
+  };
+
+  // 碰
+  this.Pon = (theplayer) => {
+    const card = this.LastRiverCard.Card;
+    theplayer.RemoveCard(card);
+    theplayer.RemoveCard(card);
+    var turn = [];
+    if ((theplayer.Position - this.LastRiverCard.Pre + 4) % 4 == 1) turn = [true, false, false];
+    if ((theplayer.Position - this.LastRiverCard.Pre + 4) % 4 == 2) turn = [false, true, false];
+    if ((theplayer.Position - this.LastRiverCard.Pre + 4) % 4 == 3) turn = [false, false, true];
+    theplayer.ShowCards.unshift({
+      Type: 'Pon',
+      Cards: [card, card, card], // 三张一样的牌
+      Turn: [false, true, false], // 中间那张是横置（被碰的）
+      Closed: [false, false, false]
+    });
+    theplayer.Options = [];
+    this.Log(`${theplayer.UserName} 碰了 ${card.Value}${card.Type}`);
+
+    // 删除被碰玩家的河牌最后一张
+    const fromPlayer = this.Players.find(p => p.Position === this.LastRiverCard.Pre);
+    if (fromPlayer && fromPlayer.RiverCards.length > 0) {
+      fromPlayer.RiverCards.pop();
+    }
+
+    for (let p of this.Players) p.Status = '';
+    theplayer.Status = 'Waiting';
+  };
+
+  this.CanPon = (theplayer) => {
+    if (!this.LastRiverCard || !this.LastRiverCard.Card) return false;
+    const card = this.LastRiverCard.Card;
+
+    if (theplayer.Position === this.LastRiverCard.Pre) return false;
+
+    let count = 0;
+    for (let c of theplayer.HandCards) {
+      if (c.Type === card.Type && c.Value === card.Value) count++;
+    }
+    return count >= 2;
+  };
+
+  // 杠
+  this.Kan = () => {
+
+  };
+
+  this.CanKan = (theplayer) => {
+
+  };
+
+  // 立直
+  this.Riichi = () => {
+
+  };
+
+  this.CanRiichi = (theplayer) => {
+
+  };
+
+  // 荣和
+  this.Ron = () => {
+
+  };
+
+  this.CanRon = (theplayer) => {
+
+  };
+
+  // 自摸
+  this.Tsumo = () => {
+
+  };
+
+  this.CanTsumo = (theplayer) => {
+
+  };
+
+  // 过
+  this.Pass = () => {
+
+  };
+
+  this.CanPass = (theplayer) => {
+
+  };
+
+  // 开始下一局
+  this.NextRound = () => {
+    if(this.PassZhuang){
+      this.StageNum++;
+      this.RoundNum = 0;
+      for (let player of this.Players) {
+        player.Position = (player.Position + 3) % 4;
+      }
+      this.PassZhuang = false;
+    }
+    else{
+      this.RoundNum++;
+    }
+    this.StartNewRound();
+  };
+
+
+
 
 };
 
