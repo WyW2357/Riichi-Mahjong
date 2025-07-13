@@ -1,4 +1,4 @@
 <svg width="300" height="400" viewBox="0 0 300 400" xmlns="http://www.w3.org/2000/svg">
   <!-- 黑色描边在最外层 -->
-  <rect x="4" y="4" width="292" height="392" rx="36" fill="#2196F3" stroke="#000" stroke-width="8"/>
+  <rect x="2" y="2" width="296" height="396" rx="36" fill="#2196F3" stroke="#93989c" stroke-width="4"/>
 </svg>

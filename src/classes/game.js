@@ -62,59 +62,61 @@ const Game = function (code, host) {
   // 添加玩家
   this.AddPlayer = (playerName, socket) => {
     const player = new Player(playerName, socket);
-    /*
+
     // 初始化RiverCards为15张固定的牌
     player.RiverCards = [
-      { Value: 1, Type: 'm', Turn: false}, { Value: 2, Type: 'm', Turn: false}, { Value: 3, Type: 'm', Turn: false},
-      { Value: 4, Type: 'm', Turn: false}, { Value: 5, Type: 'm', Turn: false}, { Value: 6, Type: 'm', Turn: false},
-      { Value: 7, Type: 'm', Turn: false}, { Value: 8, Type: 'm', Turn: false}, { Value: 9, Type: 'm', Turn: false},
-      { Value: 1, Type: 'p', Turn: false}, { Value: 2, Type: 'p', Turn: true}, { Value: 3, Type: 'p', Turn: false},
-      { Value: 4, Type: 'p', Turn: false}, { Value: 5, Type: 'p', Turn: false}, { Value: 6, Type: 'p', Turn: false}
+      { Value: 1, Type: 'm', Turn: false }, { Value: 2, Type: 'm', Turn: false }, { Value: 3, Type: 'm', Turn: false },
+      { Value: 4, Type: 'm', Turn: false }, { Value: 5, Type: 'm', Turn: false }, { Value: 6, Type: 'm', Turn: false },
+      { Value: 7, Type: 'm', Turn: false }, { Value: 8, Type: 'm', Turn: false }, { Value: 9, Type: 'm', Turn: false },
+      { Value: 1, Type: 'p', Turn: false }, { Value: 2, Type: 'p', Turn: true }, { Value: 3, Type: 'p', Turn: false },
+      { Value: 4, Type: 'p', Turn: false }, { Value: 5, Type: 'p', Turn: false }, { Value: 6, Type: 'p', Turn: false },
+      { Value: 7, Type: 'p', Turn: false }, { Value: 8, Type: 'p', Turn: false }, { Value: 9, Type: 'p', Turn: false },
+      { Value: 7, Type: 's', Turn: false }, { Value: 8, Type: 's', Turn: false }, { Value: 9, Type: 's', Turn: false }
     ];
     player.DrawCard = { Value: 1, Type: 's' };
     player.ShowCards = [
       {
-        Type:'Chi',
+        Type: 'Chi',
         Cards: [
           { Value: 1, Type: 's' },
           { Value: 2, Type: 's' },
           { Value: 3, Type: 's' }
         ],
-        Turn: [true, false, false], 
-        Closed: [false, false, false] 
+        Turn: [true, false, false],
+        Closed: [false, false, false]
       },
       {
-        Type:'Pon',
+        Type: 'Pon',
         Cards: [
-          { Value: 2, Type: 'p' },
-          { Value: 2, Type: 'p' },
-          { Value: 2, Type: 'p' }
+          { Value: 4, Type: 's' },
+          { Value: 4, Type: 's' },
+          { Value: 4, Type: 's' }
         ],
-        Turn: [false, true, false], 
-        Closed: [false, false, false] 
+        Turn: [false, true, false],
+        Closed: [false, false, false]
       },
       {
-        Type:'Kakan',
+        Type: 'Kakan',
         Cards: [
-          { Value: 7, Type: 'm' },
-          { Value: 7, Type: 'm' },
-          { Value: 7, Type: 'm' }
+          { Value: 5, Type: 's' },
+          { Value: 5, Type: 's' },
+          { Value: 5, Type: 's' }
         ],
         Turn: [false, false, true],
         Closed: [false, false, false]
       },
       {
-        Type:'Ankan',
+        Type: 'Ankan',
         Cards: [
-          { Value: 9, Type: 's' },
-          { Value: 9, Type: 's' },
-          { Value: 9, Type: 's' },
-          { Value: 9, Type: 's' }
+          { Value: 6, Type: 's' },
+          { Value: 6, Type: 's' },
+          { Value: 6, Type: 's' },
+          { Value: 6, Type: 's' }
         ],
-        Turn: [false, false, false, false], 
+        Turn: [false, false, false, false],
         Closed: [true, false, false, true] // 2张盖住，2张明牌
       }
-    ];*/
+    ];
     this.Players.push(player);
     // 分配位置：如果4人齐，随机分配0-3
     if (this.Players.length === 4) {
@@ -124,7 +126,7 @@ const Game = function (code, host) {
         this.Players[i].Position = positions[i];
       }
       this.RoundInProgress = true;
-    } 
+    }
     return;
   };
 
@@ -141,13 +143,13 @@ const Game = function (code, host) {
 
   // 开始新一局
   this.StartNewRound = () => {
-    for (let player of this.Players){
+    for (let player of this.Players) {
       player.HandCards = [];
-      player.RiverCards = [];
-      player.ShowCards = [];
+      //player.RiverCards = [];
+      //player.ShowCards = [];
       player.HistoryCards = [];
-      player.DrawCard = '';
-      player.Status = '';
+      //player.DrawCard = '';
+      player.Status = 'Riichi';
       player.Options = [];
     }
     this.DealCards();
@@ -158,12 +160,12 @@ const Game = function (code, host) {
     this.Log('玩家信息: ');
     for (let player of this.Players) {
       this.Log(player.UserName + ' ' + player.HandCards.map(card => card.Value + card.Type).join(' ') + ' ' + player.Position);
-      if(player.Position == 0) {
+      if (player.Position == 0) {
         this.Draw(player);
         player.Status = 'Waiting';
       }
     }
-    this.MainCards = [{},{},{},{},this.Deck.DealRandomCard()];  // 牌山
+    this.MainCards = [{}, {}, {}, {}, this.Deck.DealRandomCard()];  // 牌山
     this.LastRiverCard = [];
     this.Rerender();
   };
@@ -172,10 +174,10 @@ const Game = function (code, host) {
   this.MoveToNext = () => {
     let currentPos = 0;
     for (let player of this.Players) {
-      if (player.Status == 'Waiting'){
+      if (player.Status == 'Waiting') {
         player.Status = '';
         currentPos = player.Position;
-      }  
+      }
     }
     let nextPos = (currentPos + 1) % 4;
     for (let player of this.Players) {
@@ -192,7 +194,7 @@ const Game = function (code, host) {
     this.Deck.Shuffle();
     for (let player of this.Players) {
       player.HandCards = [];
-      for(let i = 0; i < 13; i++) player.AddCard(this.Deck.DealRandomCard());
+      for (let i = 0; i < 1; i++) player.AddCard(this.Deck.DealRandomCard());
       player.SortHandCards();
     }
   };
@@ -229,15 +231,15 @@ const Game = function (code, host) {
     this.Stop = false;
     for (let player of this.Players) {
       player.Options = [];
-      if(this.CanChi(player)) { player.Options.push('Chi'); this.Stop = true;}
-      if(this.CanPon(player)) { player.Options.push('Pon'); this.Stop = true;}
-      if(this.CanKan(player)) { player.Options.push('Kan'); this.Stop = true;}
-      if(this.CanRiichi(player)) { player.Options.push('Riichi'); this.Stop = true;}
-      if(this.CanRon(player)) { player.Options.push('Ron'); this.Stop = true;}
-      if(this.CanTsumo(player)) { player.Options.push('Tsumo'); this.Stop = true;}
-      if(this.CanPass(player)) { player.Options.push('Pass'); this.Stop = true;}
+      if (this.CanChi(player)) { player.Options.push('Chi'); this.Stop = true; }
+      if (this.CanPon(player)) { player.Options.push('Pon'); this.Stop = true; }
+      if (this.CanKan(player)) { player.Options.push('Kan'); this.Stop = true; }
+      if (this.CanRiichi(player)) { player.Options.push('Riichi'); this.Stop = true; }
+      if (this.CanRon(player)) { player.Options.push('Ron'); this.Stop = true; }
+      if (this.CanTsumo(player)) { player.Options.push('Tsumo'); this.Stop = true; }
+      if (this.CanPass(player)) { player.Options.push('Pass'); this.Stop = true; }
     }
-    if(this.Stop){
+    if (this.Stop) {
       for (let player of this.Players) player.Status = '';
       this.Rerender();
     }
@@ -263,15 +265,15 @@ const Game = function (code, host) {
     let riverCard = Object.assign({}, card, { Turn: false });
     theplayer.RiverCards.push(riverCard);
     theplayer.HistoryCards.push(card);
-    if(type == 'draw') theplayer.DrawCard = '';
-    if(type == 'hand') {
+    if (type == 'draw') theplayer.DrawCard = '';
+    if (type == 'hand') {
       theplayer.RemoveCard(card);
-      if(!this.Stop)
-      this.PutIn(theplayer);
+      if (!this.Stop)
+        this.PutIn(theplayer);
     }
-    this.LastRiverCard = {Card: card, Pre: theplayer.Position};
+    this.LastRiverCard = { Card: card, Pre: theplayer.Position };
     this.Check();
-    if(!this.Stop) this.MoveToNext();
+    if (!this.Stop) this.MoveToNext();
   };
 
   // 吃
@@ -371,7 +373,7 @@ const Game = function (code, host) {
 
   // 开始下一局
   this.NextRound = () => {
-    if(this.PassZhuang){
+    if (this.PassZhuang) {
       this.StageNum++;
       this.RoundNum = 0;
       for (let player of this.Players) {
@@ -379,7 +381,7 @@ const Game = function (code, host) {
       }
       this.PassZhuang = false;
     }
-    else{
+    else {
       this.RoundNum++;
     }
     this.StartNewRound();

@@ -6,7 +6,7 @@
   width: 36px;
   height: 48px;
   vertical-align: middle;
-  margin: 0 2px;
+  margin: 0 0px;
   transform-origin: left top;
 }
 
@@ -21,15 +21,34 @@
   pointer-events: none;
 }
 
-.mj-card .mj-back { z-index: 1; }
-.mj-card .mj-front { z-index: 2; }
-.mj-card .mj-face { z-index: 3; }
+.mj-card .mj-back {
+  z-index: 1;
+}
+
+.mj-card .mj-front {
+  z-index: 2;
+}
+
+.mj-card .mj-face {
+  z-index: 3;
+}
 
 /* 方向旋转 */
-.mj-card.east { transform: none; }
-.mj-card.south { transform: rotate(270deg); }
-.mj-card.west { transform: rotate(180deg); }
-.mj-card.north { transform: rotate(90deg); }
+.mj-card.east {
+  transform: none;
+}
+
+.mj-card.south {
+  transform: rotate(270deg);
+}
+
+.mj-card.west {
+  transform: rotate(180deg);
+}
+
+.mj-card.north {
+  transform: rotate(90deg);
+}
 
 /* 可选中牌的样式 */
 .selectable-card {
@@ -38,18 +57,19 @@
 
 .selectable-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .selectable-card.selected {
   transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(255,224,102,0.6);
+  box-shadow: 0 6px 12px rgba(255, 224, 102, 0.6);
   border: 2px solid #ffe066;
   border-radius: 4px;
 }
 
 /* 行内flex布局辅助 */
-.hand-row, .discard-row {
+.hand-row,
+.discard-row {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -64,11 +84,13 @@
   cursor: pointer;
   user-select: none;
 }
+
 .game-action-btn:hover {
   background: #ffe066;
   box-shadow: 0 4px 16px #ffe06699;
   transform: translateY(-2px) scale(1.05);
 }
+
 .game-action-btn:active {
   background: #ffe066;
   box-shadow: 0 2px 8px #b8860b99;
