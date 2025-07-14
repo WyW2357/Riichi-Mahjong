@@ -70,193 +70,22 @@ var JoinRoom = function () {
 // 重新渲染游戏界面，更新所有玩家的状态
 function GetCardImgSrc(card) {
   if (!card) return '';
-  // if (card.Value === 0) {
-  //   if (card.Type === 'm') return 'img/Man5-Dora.svg';
-  //   if (card.Type === 'p') return 'img/Pin5-Dora.svg';
-  //   if (card.Type === 's') return 'img/Sou5-Dora.svg';
-  // }
-  // if (card.Type === 'm') return 'img/Man' + card.Value + '.svg';
-  // if (card.Type === 'p') return 'img/Pin' + card.Value + '.svg';
-  // if (card.Type === 's') return 'img/Sou' + card.Value + '.svg';
-  // if (card.Type === 'z') {
-  //   var zMap = { 1: 'Ton', 2: 'Nan', 3: 'Shaa', 4: 'Pei', 5: 'Haku', 6: 'Hatsu', 7: 'Chun' };
-  //   return 'img/' + zMap[card.Value] + '.svg';
-  // }
   return 'img/' + card.Value + card.Type + '.svg';
 }
 
-const CARD_WIDTH = 36, CARD_HEIGHT = 48, GAP = 4;
-const TABLE_SIZE = 892;
-
-// hand区(边缘20px)
-const handStep = CARD_WIDTH + GAP;
-const handStartX = 68, handStartY = 824;
-const handStartXSouth = 824, handStartYSouth = 824;
-const handStartXWest = 824, handStartYWest = 68;
-const handStartXNorth = 68, handStartYNorth = 68;
-
-// river区
-const riverCols = 6;
-const riverStartX = 328, riverStartY = 616;
-const riverStartXSouth = 616, riverStartYSouth = 564;
-const riverStartXWest = 564, riverStartYWest = 276;
-const riverStartXNorth = 276, riverStartYNorth = 328;
-
 const positions = {
   east: {
-    hand: Array.from({ length: 19 }, (_, i) => ({
-      left: handStartX + i * handStep,
-      top: handStartY
-    })),
-    river: (() => {
-      const coords = [];
-      // 第1行：6个格子 (0-5)
-      for (let i = 0; i < 6; i++) {
-        coords.push({
-          left: riverStartX + i * 40,
-          top: riverStartY
-        });
-      }
-      // 第2行：6个格子 (6-11)
-      for (let i = 0; i < 6; i++) {
-        coords.push({
-          left: riverStartX + i * 40,
-          top: riverStartY + 52
-        });
-      }
-      // 第3行：12个格子 (12-23)
-      for (let i = 0; i < 12; i++) {
-        coords.push({
-          left: riverStartX + i * 40,
-          top: riverStartY + 104
-        });
-      }
-      return coords;
-    })(),
     // 新增按钮区（第四行）
     buttonRow: Array.from({ length: 5 }, (_, i) => ({
-      left: riverStartX + i * 80 + 80,
-      top: riverStartY + 156
+      left: 328 + i * 80 + 80,
+      top: 616 + 156
     }))
-  },
-  south: {
-    hand: Array.from({ length: 19 }, (_, i) => ({
-      left: handStartXSouth,
-      top: handStartYSouth - i * handStep
-    })),
-    river: (() => {
-      const coords = [];
-      // 第1行：6个格子 (0-5)
-      for (let i = 0; i < 6; i++) {
-        coords.push({
-          left: riverStartXSouth,
-          top: riverStartYSouth - i * 40
-        });
-      }
-      // 第2行：6个格子 (6-11)
-      for (let i = 0; i < 6; i++) {
-        coords.push({
-          left: riverStartXSouth + 52,
-          top: riverStartYSouth - i * 40
-        });
-      }
-      // 第3行：12个格子 (12-23)
-      for (let i = 0; i < 12; i++) {
-        coords.push({
-          left: riverStartXSouth + 104,
-          top: riverStartYSouth - i * 40
-        });
-      }
-      return coords;
-    })()
-  },
-  west: {
-    hand: Array.from({ length: 19 }, (_, i) => ({
-      left: handStartXWest - i * handStep,
-      top: handStartYWest
-    })),
-    river: (() => {
-      const coords = [];
-      // 第1行：6个格子 (0-5)
-      for (let i = 0; i < 6; i++) {
-        coords.push({
-          left: riverStartXWest - i * 40,
-          top: riverStartYWest
-        });
-      }
-      // 第2行：6个格子 (6-11)
-      for (let i = 0; i < 6; i++) {
-        coords.push({
-          left: riverStartXWest - i * 40,
-          top: riverStartYWest - 52
-        });
-      }
-      // 第3行：12个格子 (12-23)
-      for (let i = 0; i < 12; i++) {
-        coords.push({
-          left: riverStartXWest - i * 40,
-          top: riverStartYWest - 104
-        });
-      }
-      return coords;
-    })()
-  },
-  north: {
-    hand: Array.from({ length: 19 }, (_, i) => ({
-      left: handStartXNorth,
-      top: handStartYNorth + i * handStep
-    })),
-    river: (() => {
-      const coords = [];
-      // 第1行：6个格子 (0-5)
-      for (let i = 0; i < 6; i++) {
-        coords.push({
-          left: riverStartXNorth,
-          top: riverStartYNorth + i * 40
-        });
-      }
-      // 第2行：6个格子 (6-11)
-      for (let i = 0; i < 6; i++) {
-        coords.push({
-          left: riverStartXNorth - 52,
-          top: riverStartYNorth + i * 40
-        });
-      }
-      // 第3行：12个格子 (12-23)
-      for (let i = 0; i < 12; i++) {
-        coords.push({
-          left: riverStartXNorth - 104,
-          top: riverStartYNorth + i * 40
-        });
-      }
-      return coords;
-    })()
   }
 };
 
 socket.on('rerender', function (data) {
   $('#gameDiv').html(''); // 清空桌面
 
-  // 调试：标记所有hand点(有标号，红色)
-  Object.keys(positions).forEach(function (dir) {
-    if (positions[dir].hand) {
-      positions[dir].hand.forEach(function (pos, idx) {
-        $('#gameDiv').append(
-          '<div style="position:absolute;left:' + (pos.left - 4) + 'px;top:' + (pos.top - 4) + 'px;width:8px;height:8px;border-radius:50%;background:#f00;z-index:100;font-size:10px;color:#fff;text-align:center;line-height:8px;opacity:0.7;">' + idx + '</div>'
-        );
-      });
-    }
-  });
-  // 调试：标记所有river点(有标号，蓝色)
-  Object.keys(positions).forEach(function (dir) {
-    if (positions[dir].river) {
-      positions[dir].river.forEach(function (pos, idx) {
-        $('#gameDiv').append(
-          '<div style="position:absolute;left:' + (pos.left - 4) + 'px;top:' + (pos.top - 4) + 'px;width:8px;height:8px;border-radius:50%;background:#00f;z-index:100;font-size:10px;color:#fff;text-align:center;line-height:8px;opacity:0.7;">' + idx + '</div>'
-        );
-      });
-    }
-  });
   // 调试：标记buttonRow点(绿色)
   if (positions.east && positions.east.buttonRow) {
     positions.east.buttonRow.forEach(function (pos, idx) {
@@ -325,96 +154,91 @@ socket.on('rerender', function (data) {
     // 渲染点数
     $('#gameDiv').append('<div class="points ' + dir + '">' + player.Points + '</div>');
 
-    // 统计杠的数量
-    const kanCount = (Array.isArray(player.ShowCards) && player.ShowCards.length > 0) ? player.ShowCards.filter(meld => meld.Type === 'Ankan' || meld.Type === 'Minkan').length : 0;
-    // 渲染手牌
-    player.HandCards.forEach(function (card, idx) {
-      if (kanCount == 4) var pos = positions[dir].hand[idx];
-      else var pos = positions[dir].hand[idx + 1];
-      var style = 'left:' + pos.left + 'px;top:' + pos.top + 'px;';
+    // 创建tile-container
+    $('#gameDiv').append('<div class="tile-container ' + dir + '"></div>');
+    let tileContainer = $('#gameDiv .tile-container.' + dir);
+    let leftBound = 120, rightBound = 882, houLeftBound = 332;
+    let upperBound = 830, houUpperBound = 608;
 
-      // 只有自己显示牌面，其他玩家显示牌背
-      if (dir === 'east') { // 自己
-        var front = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-        var cardId = 'hand-' + idx;
-        $('#gameDiv').append('<span id="' + cardId + '" class="mj-card ' + dir + ' selectable-card" style="position:absolute;cursor:pointer;' + style + '" data-card-index="' + idx + '" data-card-type="hand">' + front + '</span>');
-      } else { // 其他玩家
-        $('#gameDiv').append('<span class="mj-card ' + dir + '" style="position:absolute;' + style + '"><img class="mj-back" src="img/Back.svg"></span>');
-      }
-    });
-    // 渲染DrawCard（摸牌）
-    if (player.DrawCard) {
-      if (kanCount == 4) var pos = positions[dir].hand[player.HandCards.length + 1];
-      else var pos = positions[dir].hand[player.HandCards.length + 2];
-      var style = 'left:' + pos.left + 'px;top:' + pos.top + 'px;';
-
-      // 只有自己显示牌面，其他玩家显示牌背
-      if (dir === 'east') { // 自己
-        var front = '<img class="mj-front" src="' + GetCardImgSrc(player.DrawCard) + '">';
-        var cardId = 'draw-card';
-        $('#gameDiv').append('<span id="' + cardId + '" class="mj-card ' + dir + ' selectable-card" style="position:absolute;cursor:pointer;' + style + '" data-card-index="' + (player.HandCards.length) + '" data-card-type="draw">' + front + '</span>');
-      } else { // 其他玩家
-        $('#gameDiv').append('<span class="mj-card ' + dir + '" style="position:absolute;' + style + '"><img class="mj-back" src="img/Back.svg"></span>');
-      }
-    }
-    // 渲染ShowCards（副露牌）
-    if (Array.isArray(player.ShowCards) && player.ShowCards.length > 0) {
-      // 副露区起始格（19格-空格数）
-      let idx = player.HandCards.length + 6 - kanCount;
-      player.ShowCards.forEach(function (meld) {
-        let isKan = meld.Type === 'Ankan' || meld.Type === 'Minkan';
-        let isKakan = meld.Type === 'Kakan';
-        let slots = isKan ? 4 : 3;
-
-        if (isKakan) {
-          // 先和碰一样渲染3张
-          meld.Cards.forEach(function (card, j) {
-            var pos = positions[dir].hand[idx + j];
-            var front = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-            var style = 'left:' + pos.left + 'px;top:' + pos.top + 'px;';
-            var inner = front;
-            if (meld.Closed && meld.Closed[j]) inner = '<img class="mj-back" src="img/Back.svg">';
-            if (meld.Turn && meld.Turn[j]) inner = '<div style="width:100%;height:100%;transform:rotate(270deg) translateX(-6px);transform-origin:center center;">' + inner + '</div>';
-            $('#gameDiv').append('<span class="mj-card ' + dir + '" style="position:absolute;z-index:10;' + style + '">' + inner + '</span>');
-          });
-          // 再在横置牌上叠加一张横置牌向中间移动38px
-          meld.Cards.forEach(function (card, j) {
-            if (meld.Turn && meld.Turn[j]) {
-              var pos = positions[dir].hand[idx + j];
-              var front = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-              var style = 'left:' + pos.left + 'px;top:' + pos.top + 'px;';
-              var inner2 = front;
-              if (meld.Closed && meld.Closed[j]) inner2 = '<img class="mj-back" src="img/Back.svg">';
-              // 横置并向中间移动30px
-              inner2 = '<div style="width:100%;height:100%;transform:rotate(270deg) translate(32px);transform-origin:center center;">' + inner2 + '</div>';
-              $('#gameDiv').append('<span class="mj-card ' + dir + '" style="position:absolute;z-index:20;' + style + '">' + inner2 + '</span>');
-            }
-          });
-        } else {
-          meld.Cards.forEach(function (card, j) {
-            var pos = positions[dir].hand[idx + j];
-            var front = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-            var style = 'left:' + pos.left + 'px;top:' + pos.top + 'px;';
-            var inner = front;
-            if (meld.Closed && meld.Closed[j]) inner = '<img class="mj-back" src="img/Back.svg">';
-            if (meld.Turn && meld.Turn[j]) inner = '<div style="width:100%;height:100%;transform:rotate(270deg) translateX(-6px);transform-origin:center center;">' + inner + '</div>';
-            $('#gameDiv').append('<span class="mj-card ' + dir + '" style="position:absolute;' + style + '">' + inner + '</span>');
-          });
-        }
-        idx += slots;
-      });
-    }
-    // 渲染河牌
-    (player.RiverCards || []).forEach(function (card, idx) {
-      var pos = positions[dir].river[idx];
-      var front = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-      var style = 'left:' + pos.left + 'px;top:' + pos.top + 'px;';
-      var inner = front;
+    // 渲染牌河
+    for (let idx = 0; idx < (player.RiverCards || []).length; idx++) {
+      let card = player.RiverCards[idx];
+      let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
+      let posStyle = '';
       if (card.Turn) {
-        inner = '<div style="width:100%;height:100%;transform:rotate(270deg);transform-origin:center center;">' + front + '</div>';
+        posStyle = 'left:' + (houLeftBound - 38) + 'px;top:' + (houUpperBound + 7) + 'px;transform:rotate(270deg);transform-origin:right top;';
+        houLeftBound += 52;
       }
-      $('#gameDiv').append('<span class="mj-card ' + dir + '" style="position:absolute;' + style + '">' + inner + '</span>');
-    });
+      else {
+        posStyle = 'left:' + houLeftBound + 'px;top:' + houUpperBound + 'px;';
+        houLeftBound += 38;
+      }
+      tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '">' + cardImg + '</span>');
+      if (idx === 5 || idx === 11) {
+        houLeftBound = 332;
+        houUpperBound += 52; // 每6张牌换行
+      }
+    }
+
+    // 渲染手牌
+    for (let idx = 0; idx < player.HandCards.length; idx++) {
+      let card = player.HandCards[idx];
+      let posStyle = 'left:' + leftBound + 'px;top:' + upperBound + 'px;';
+      if (dir === 'east') {
+        let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
+        tileContainer.append('<span class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '">' + cardImg + '</span>');
+      }
+      else {
+        tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
+      }
+      leftBound += 38;
+    }
+
+    // 渲染摸牌
+    if (player.DrawCard) {
+      leftBound += 12;
+      let posStyle = 'left:' + leftBound + 'px;top:' + upperBound + 'px;';
+      if (dir === 'east') {
+        let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(player.DrawCard) + '">';
+        tileContainer.append('<span id="draw-card" class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '">' + cardImg + '</span>');
+      } else {
+        tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
+      }
+      leftBound += 38;
+    }
+
+    // 渲染副露牌
+    if (Array.isArray(player.ShowCards) && player.ShowCards.length > 0) {
+      for (let meldIdx = 0; meldIdx < player.ShowCards.length; meldIdx++) {
+        let meld = player.ShowCards[meldIdx];
+        // 副露从右向左渲染
+        for (let cardIdx = meld.Cards.length - 1; cardIdx >= 0; cardIdx--) {
+          let card = meld.Cards[cardIdx];
+          let posStyle = '';
+          if (meld.Turn && meld.Turn[cardIdx]) {
+            posStyle = 'left:' + rightBound + 'px;top:' + upperBound + 'px;transform:rotate(270deg);transform-origin:left bottom;';
+            if (meld.Type === 'Kakan') {
+              kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
+              let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
+              tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
+            }
+            rightBound -= 52;
+          }
+          else {
+            posStyle = 'left:' + (rightBound - 38) + 'px;top:' + upperBound + 'px;';
+            rightBound -= 38;
+          }
+          if (meld.Closed && meld.Closed[cardIdx]) {
+            tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
+          }
+          else {
+            let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
+            tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '">' + cardImg + '</span>');
+          }
+        }
+      }
+    }
+
     // 渲染按钮区（只在自己）
     if (dir === 'east') {
       const optionMap = {

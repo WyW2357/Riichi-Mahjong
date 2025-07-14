@@ -3,16 +3,14 @@
 .mj-card {
   display: inline-block;
   position: relative;
-  width: 36px;
-  height: 48px;
+  width: 38px;
+  height: 52px;
   vertical-align: middle;
   margin: 0 0px;
-  transform-origin: left top;
 }
 
 .mj-card .mj-back,
-.mj-card .mj-front,
-.mj-card .mj-face {
+.mj-card .mj-front {
   position: absolute;
   left: 0;
   top: 0;
@@ -22,15 +20,11 @@
 }
 
 .mj-card .mj-back {
-  z-index: 1;
+  z-index: 20;
 }
 
 .mj-card .mj-front {
-  z-index: 2;
-}
-
-.mj-card .mj-face {
-  z-index: 3;
+  z-index: 20;
 }
 
 /* 方向旋转 */
@@ -53,6 +47,7 @@
 /* 可选中牌的样式 */
 .selectable-card {
   transition: all 0.2s ease;
+  pointer-events: all;
 }
 
 .selectable-card:hover {
@@ -68,13 +63,6 @@
 }
 
 /* 行内flex布局辅助 */
-.hand-row,
-.discard-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
 .game-action-btn {
   box-shadow: 0 2px 8px #0001;
   background: #fffbe8cc;

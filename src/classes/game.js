@@ -80,41 +80,10 @@ const Game = function (code, host) {
         Cards: [
           { Value: 1, Type: 's' },
           { Value: 2, Type: 's' },
-          { Value: 3, Type: 's' }
+          { Value: 3, Type: 's' },
         ],
         Turn: [true, false, false],
         Closed: [false, false, false]
-      },
-      {
-        Type: 'Pon',
-        Cards: [
-          { Value: 4, Type: 's' },
-          { Value: 4, Type: 's' },
-          { Value: 4, Type: 's' }
-        ],
-        Turn: [false, true, false],
-        Closed: [false, false, false]
-      },
-      {
-        Type: 'Kakan',
-        Cards: [
-          { Value: 5, Type: 's' },
-          { Value: 5, Type: 's' },
-          { Value: 5, Type: 's' }
-        ],
-        Turn: [false, false, true],
-        Closed: [false, false, false]
-      },
-      {
-        Type: 'Ankan',
-        Cards: [
-          { Value: 6, Type: 's' },
-          { Value: 6, Type: 's' },
-          { Value: 6, Type: 's' },
-          { Value: 6, Type: 's' }
-        ],
-        Turn: [false, false, false, false],
-        Closed: [true, false, false, true] // 2张盖住，2张明牌
       }
     ];
     this.Players.push(player);
@@ -194,7 +163,7 @@ const Game = function (code, host) {
     this.Deck.Shuffle();
     for (let player of this.Players) {
       player.HandCards = [];
-      for (let i = 0; i < 1; i++) player.AddCard(this.Deck.DealRandomCard());
+      for (let i = 0; i < 10; i++) player.AddCard(this.Deck.DealRandomCard());
       player.SortHandCards();
     }
   };

@@ -10,9 +10,10 @@ html {
   height: 892px;
   margin: 40px auto 0 auto;
   background: #3cb371;
-  border-radius: 32px;
+  border-radius: 24px;
   box-shadow: 0 0 24px #2226;
   overflow: visible;
+  z-index: 1;
 }
 
 #gameDiv .main-board {
@@ -135,7 +136,7 @@ html {
   position: absolute;
   width: 11px;
   height: 84px;
-  z-index: 120;
+  z-index: 30;
 }
 
 #gameDiv .riichibou.east {
@@ -164,7 +165,7 @@ html {
   position: absolute;
   width: 60px;
   height: 28px;
-  z-index: 120;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -196,5 +197,29 @@ html {
 #gameDiv .points.north {
   left: 296px;
   top: 432px;
+  transform: rotate(90deg);
+}
+
+#gameDiv .tile-container {
+  position: absolute;
+  width: 892px;
+  height: 892px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#gameDiv .tile-container.east {
+  transform: rotate(0deg);
+}
+
+#gameDiv .tile-container.south {
+  transform: rotate(270deg);
+}
+
+#gameDiv .tile-container.west {
+  transform: rotate(180deg);
+}
+
+#gameDiv .tile-container.north {
   transform: rotate(90deg);
 }
