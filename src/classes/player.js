@@ -8,7 +8,7 @@ const Player = function (playername, socket) {
   this.DrawCard = '';
   this.Points = 25000;
   this.Position = 0;
-  this.Status = '';   // Waiting
+  this.Status = '';   // WaitingCard WaitingAction WaitingSelect WaitingCardOrAction
   this.Options = [];
 
   //摸牌

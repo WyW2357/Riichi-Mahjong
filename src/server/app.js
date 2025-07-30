@@ -61,7 +61,9 @@ io.on('connection', (socket) => {
           Players: game.Players.map((p) => {return p.UserName})
         });
         if (game.Players.length == 4) {
+          // 进入游戏界面
           game.EmitToPlayers('gameBegin', { Code: data.Code });
+          game.RoundInProgress = true;
           game.StartNewRound();
         }
       }
@@ -76,14 +78,12 @@ io.on('connection', (socket) => {
     });
     if (game) {
       const player = game.FindPlayer(socket.id);
-      // 根据不同的行动类型调用相应的处理方法
-      if (data.Action == 'Chi') game.Chi(player);
-      if (data.Action == 'Pon') game.Pon(player);
-      if (data.Action == 'Kan') game.Kan(player);
-      if (data.Action == 'Riichi') game.Riichi(player);
-      if (data.Action == 'Ron') game.Ron(player);
-      if (data.Action == 'Tsumo') game.Tsumo(player);
-      if (data.Action == 'Pass') game.Pass(player);
+      if(player.Status == 'WaitingCardOrAction' || player.Status == 'WaitingAction'){
+      game.ActionList.push({Player: player, Action: data.Action});
+      game.Log(`${player.UserName} 选择行动: ${data.Action}`);
+      player.Status = '';
+      game.ActionManager();
+      }
     }
   });
 
@@ -95,12 +95,49 @@ io.on('connection', (socket) => {
     });
     if (game) {
       const player = game.FindPlayer(socket.id);
-      if(player.Status == 'Waiting'){
+      if(player.Status == 'WaitingCard' || player.Status == 'WaitingCardOrAction'){
+        player.Status = '';
         game.PutOut(player, data.Card, data.Type);
       }
     }
   });
 
+  // 处理玩家最终碰牌
+  socket.on('finalPon', (data) => {
+    const game = rooms.find((r) => {
+      const player = r.FindPlayer(socket.id);
+      return player && player.Socket && player.Socket.id == socket.id;
+    });
+    if (game) {
+      const player = game.FindPlayer(socket.id);
+      game.Pon(player, data.poncard1, data.poncard2);
+    }
+  });
+
+  // 处理玩家最终吃牌
+  socket.on('finalChi', (data) => {
+    const game = rooms.find((r) => {
+      const player = r.FindPlayer(socket.id);
+      return player && player.Socket && player.Socket.id == socket.id;
+    });
+    if (game) {
+      const player = game.FindPlayer(socket.id);
+      game.Chi(player, data.chiCard1, data.chiCard2);
+    }
+  });
+
+  // 处理玩家最终杠牌
+  socket.on('finalKan', (data) => {
+    const game = rooms.find((r) => {
+      const player = r.FindPlayer(socket.id);
+      return player && player.Socket && player.Socket.id == socket.id;
+    });
+    if (game) {
+      const player = game.FindPlayer(socket.id);
+      if (player.DrawCard) game.AnKanOrKakan(player, data.kanCard);
+      else game.MinKan(player, data.kanCard);
+    }
+  });
 });
 
   

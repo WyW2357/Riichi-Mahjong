@@ -86,15 +86,6 @@ const positions = {
 socket.on('rerender', function (data) {
   $('#gameDiv').html(''); // 清空桌面
 
-  // 调试：标记buttonRow点(绿色)
-  if (positions.east && positions.east.buttonRow) {
-    positions.east.buttonRow.forEach(function (pos, idx) {
-      $('#gameDiv').append(
-        '<div style="position:absolute;left:' + (pos.left - 4) + 'px;top:' + (pos.top - 4) + 'px;width:8px;height:8px;border-radius:50%;background:#0c0;z-index:101;font-size:10px;color:#fff;text-align:center;line-height:8px;opacity:0.7;">' + idx + '</div>'
-      );
-    });
-  }
-
   // 渲染牌桌中心部分
   $('#gameDiv').append('<div class="main-board"></div>')
   // 渲染牌山（MainCards）
@@ -186,7 +177,9 @@ socket.on('rerender', function (data) {
       let posStyle = 'left:' + leftBound + 'px;top:' + upperBound + 'px;';
       if (dir === 'east') {
         let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-        tileContainer.append('<span class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '">' + cardImg + '</span>');
+        tileContainer.append('<span class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '"'
+          + ' data-card-index="' + idx + '" data-card-type="hand">'
+          + cardImg + '</span>');
       }
       else {
         tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
@@ -200,7 +193,9 @@ socket.on('rerender', function (data) {
       let posStyle = 'left:' + leftBound + 'px;top:' + upperBound + 'px;';
       if (dir === 'east') {
         let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(player.DrawCard) + '">';
-        tileContainer.append('<span id="draw-card" class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '">' + cardImg + '</span>');
+        tileContainer.append('<span id="draw-card" class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '"'
+          + ' data-card-type="draw" data-card-index="13">'
+          + cardImg + '</span>');
       } else {
         tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
       }
@@ -218,9 +213,23 @@ socket.on('rerender', function (data) {
           if (meld.Turn && meld.Turn[cardIdx]) {
             posStyle = 'left:' + rightBound + 'px;top:' + upperBound + 'px;transform:rotate(270deg);transform-origin:left bottom;';
             if (meld.Type === 'Kakan') {
-              kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
-              let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-              tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
+              let zeroNum = meld.Cards.filter(c => c.Value === 0 && (c.Type == 's' || c.Type == 'p' || c.Type == 'm')).length;
+              let fiveNum = meld.Cards.filter(c => c.Value === 5 && (c.Type == 's' || c.Type == 'p' || c.Type == 'm')).length;
+              if (zeroNum === 1 && fiveNum === 2) {
+                let kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
+                let cardImg = '<img class="mj-front" src="' + GetCardImgSrc({Value:5,Type:card.Type}) + '">';
+                tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
+              }
+              else if(fiveNum === 3) {
+                let kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
+                let cardImg = '<img class="mj-front" src="' + GetCardImgSrc({Value:0,Type:card.Type}) + '">';
+                tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
+              }
+              else {
+                let kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
+                let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
+                tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
+              }
             }
             rightBound -= 52;
           }
@@ -241,56 +250,98 @@ socket.on('rerender', function (data) {
 
     // 渲染按钮区（只在自己）
     if (dir === 'east') {
-      const optionMap = {
-        'Chi': { label: 'Chi', icon: 'img/Chi.svg' },
-        'Pon': { label: 'Pon', icon: 'img/Pon.svg' },
-        'Kan': { label: 'Kan', icon: 'img/Kan.svg' },
-        'Riichi': { label: 'Riichi', icon: 'img/Riichi.svg' },
-        'Pass': { label: 'Pass', icon: 'img/Pass.svg' },
-        'Ron': { label: 'Ron', icon: 'img/Ron.svg' },
-        'Tsumo': { label: 'Tsumo', icon: 'img/Tsumo.svg' }
-      };
-      // 只显示Options里的操作
-      (players[0].Options || []).slice(0, 5).forEach(function (opt, idx) {
-        const info = optionMap[opt] || { label: opt, icon: '' };
-        const pos = positions.east.buttonRow[idx];
-        if (!pos) return;
-        $('#gameDiv').append(
-          '<img class="game-action-btn" data-action="' + opt + '"'
-          + ' src="' + info.icon + '"'
-          + ' alt="' + info.label + '"'
-          + ' style="position:absolute;left:' + pos.left + 'px;top:' + pos.top + 'px;width:60px;height:45px;z-index:200;cursor:pointer;">'
-        );
-      });
+      if (players[0].Status === 'WaitingSelect' && Array.isArray(players[0].Options)) {
+        const getValue = c => (c.Value === 0 ? 5 : c.Value);
+        const isSameCard = (a, b) => a.Type === b.Type && getValue(a) === getValue(b);
+        players[0].Options.forEach(function(cardGroup, idx) {
+          const pos = positions.east.buttonRow[idx];
+          if (!pos) return;
+          let label = '';
+          if(cardGroup.length === 1) {
+            label += cardGroup[0].Value + cardGroup[0].Type;
+            label += '杠';
+          }
+          else if(cardGroup.length === 2) {
+            label += cardGroup.map(c => (c.Value === 0 ? '0' : c.Value) + c.Type).join('');
+            if (isSameCard(cardGroup[0], cardGroup[1])) label += '碰';
+            else label += '吃';
+          }
+          $('#gameDiv').append(
+            '<button class="game-action-btn-select" data-idx="' + idx + '"'
+            + ' style="position:absolute;left:' + pos.left + 'px;top:' + pos.top + 'px;width:60px;height:45px;z-index:200;cursor:pointer;">'
+            + label + '</button>'
+          );
+        });
+      } else {
+        const optionMap = {
+          'Chi': { label: 'Chi', icon: 'img/Chi.svg' },
+          'Pon': { label: 'Pon', icon: 'img/Pon.svg' },
+          'Kan': { label: 'Kan', icon: 'img/Kan.svg' },
+          'Riichi': { label: 'Riichi', icon: 'img/Riichi.svg' },
+          'Pass': { label: 'Pass', icon: 'img/Pass.svg' },
+          'Ron': { label: 'Ron', icon: 'img/Ron.svg' },
+          'Tsumo': { label: 'Tsumo', icon: 'img/Tsumo.svg' }
+        };
+        // 只显示Options里的操作
+        (players[0].Options || []).slice(0, 5).forEach(function (opt, idx) {
+          const info = optionMap[opt] || { label: opt, icon: '' };
+          const pos = positions.east.buttonRow[idx];
+          if (!pos) return;
+          $('#gameDiv').append(
+            '<img class="game-action-btn" data-action="' + opt + '"'
+            + ' src="' + info.icon + '"'
+            + ' alt="' + info.label + '"'
+            + ' style="position:absolute;left:' + pos.left + 'px;top:' + pos.top + 'px;width:60px;height:45px;z-index:200;cursor:pointer;">'
+          );
+        });
+      }
     }
   });
-
 
   // 按钮点击选中功能
   $('.game-action-btn').off('click').on('click', function () {
     const action = $(this).data('action');
+    // 点击后立即隐藏所有操作按钮
+    $('.game-action-btn').hide();
     socket.emit('playerAction', { Action: action });
   });
 
-  // 麻将牌点击选中功能
-  $('.selectable-card').off('click').on('click', function () {
+  // 麻将牌鼠标移入高亮
+  $('.selectable-card').off('mouseenter').on('mouseenter', function () {
     // 移除其他牌的选中状态
     $('.selectable-card').removeClass('selected');
     // 添加当前牌的选中状态
     $(this).addClass('selected');
+  });
 
+  // 麻将牌点击选中功能
+  $('.selectable-card').off('click').on('click', function () {
     // 获取牌的信息
     const cardIndex = $(this).data('card-index');
     const cardType = $(this).data('card-type');
-    let cardValue = null;
-    if (cardType === 'hand') {
-      cardValue = players[0].HandCards[cardIndex];
-    } else if (cardType === 'draw') {
-      cardValue = players[0].DrawCard;
-    }
-
+    let cardValue = cardType === 'hand' ? players[0].HandCards[cardIndex] : players[0].DrawCard;
     socket.emit('selectCard', { Card: cardValue, Type: cardType });
-
     console.log('选中牌:', cardType, cardIndex, cardValue);
+  });
+
+  // 绑定点击事件
+  $('.game-action-btn-select').off('click').on('click', function() {
+    const idx = $(this).data('idx');
+    const cardGroup = players[0].Options[idx];
+    const getValue = c => (c.Value === 0 ? 5 : c.Value);
+    const isSameCard = (a, b) => a.Type === b.Type && getValue(a) === getValue(b);
+    if(cardGroup.length === 1) {
+      // 杠
+      socket.emit('finalKan', { kanCard: cardGroup[0] });
+    }
+    else if(cardGroup.length === 2) {
+      if (isSameCard(cardGroup[0], cardGroup[1])) {
+        // 碰
+        socket.emit('finalPon', { poncard1: cardGroup[0], poncard2: cardGroup[1] });
+      } else {
+        // 吃
+      socket.emit('finalChi', { chiCard1: cardGroup[0], chiCard2: cardGroup[1] });
+      }
+    }
   });
 });
