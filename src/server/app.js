@@ -78,9 +78,8 @@ io.on('connection', (socket) => {
     });
     if (game) {
       const player = game.FindPlayer(socket.id);
-      if(player.Status == 'WaitingCardOrAction' || player.Status == 'WaitingAction'){
+      if(player.Status == 'WaitingCardOrAction' || player.Status == 'WaitingAction' || player.Status == 'WaitingTsumoOrKan'){
       game.ActionList.push({Player: player, Action: data.Action});
-      game.Log(`${player.UserName} 选择行动: ${data.Action}`);
       player.Status = '';
       game.ActionManager();
       }
@@ -97,6 +96,20 @@ io.on('connection', (socket) => {
       const player = game.FindPlayer(socket.id);
       if(player.Status == 'WaitingCard' || player.Status == 'WaitingCardOrAction'){
         player.Status = '';
+        game.PutOut(player, data.Card, data.Type);
+      }
+      else if(player.Status == 'WaitingTsumoOrKan' && data.Type == 'draw'){
+          player.Status = '';
+          player.IsYiFa = false;
+          game.PutOut(player, data.Card, data.Type);
+      }
+      else if(player.Status == 'WaitingRiichi'){
+        player.Status = '';
+        player.IsRiichi = true;
+        player.IsYiFa = true;
+        player.Points -= 1000;
+        game.RiichiBang += 1;
+        player.IsDoubleRiichi = game.Players.every(p => p.ShowCards.length == 0) && player.HistoryCards.length == 0;
         game.PutOut(player, data.Card, data.Type);
       }
     }

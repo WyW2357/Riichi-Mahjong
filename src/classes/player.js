@@ -8,8 +8,13 @@ const Player = function (playername, socket) {
   this.DrawCard = '';
   this.Points = 25000;
   this.Position = 0;
-  this.Status = '';   // WaitingCard WaitingAction WaitingSelect WaitingCardOrAction
+  this.Status = '';   // WaitingCard WaitingAction WaitingSelect WaitingCardOrAction WaitingRiichi WaitingTsumoOrKan
   this.Options = [];
+  this.IsRiichi = false;
+  this.IsDoubleRiichi = false;
+  this.IsYiFa = false;
+  this.IsLingShang = false;
+  this.IsTingPai = false;
 
   //摸牌
   this.AddCard = (card) => {

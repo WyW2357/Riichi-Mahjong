@@ -208,6 +208,14 @@ html {
   pointer-events: none;
 }
 
+#gameDiv .tile-container .player-id {
+  position: absolute;
+  left: 150px;
+  top: 752px;
+  font-size: 24px;
+  z-index: 200;
+}
+
 #gameDiv .tile-container.east {
   transform: rotate(0deg);
 }
@@ -222,4 +230,77 @@ html {
 
 #gameDiv .tile-container.north {
   transform: rotate(90deg);
+}
+
+.game-modal {
+  display: block;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.game-modal-content {
+  background-color: rgba(254, 254, 254, 0.8);
+  margin: 3% auto;
+  padding: 30px;
+  border: 1px solid #888;
+  width: 90%;
+  max-width: 800px;
+  border-radius: 8px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.game-modal-content h4 {
+  color: #d32f2f;
+  text-align: center;
+}
+
+.game-modal-content .points-board {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  margin-top: 50px;
+}
+
+.points-board .player-board {
+  border: 2px solid;
+  border-radius: 10px;
+  position: absolute;
+  z-index: 210;
+  background-color: rgba(185, 255, 185);
+  width: 200px;
+  height: 60px;
+}
+
+.points-board .player-board.east {
+  left: 269px;
+  top: 80px;
+}
+
+.points-board .player-board.south {
+  right: 20px;
+  top: 45px;
+}
+
+.points-board .player-board.west {
+  left: 269px;
+  top: 10px;
+}
+
+.points-board .player-board.north {
+  left: 20px;
+  top: 45px;
+}
+
+.points-board .player-board div {
+  text-align: center;
+}
+
+.points-board .player-board div span {
+  font-size: 18px;
 }

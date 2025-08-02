@@ -13,13 +13,14 @@ const Game = function (code, host) {
   this.RoundNum = 0;              // 当前本场数
   this.RiichiBang = 0;            // 立直棒数
   this.RoundInProgress = false;   // 是否正在进行
-  this.PassZhuang = false;        // 是否已经过庄
   this.LastRiverCard = '';        // {Card, Player}
   this.Stop = false;              // 是否停止
   this.ActionList = [];           // 行动列表
   this.KanNum = 0;                // 杠数
   this.MainCards = [];            // 牌山
+  this.LiDora = [];               // 里宝牌
   this.RestCardsNum = 70;         // 剩余牌数
+  this.KanBreak = '';             // 是否杠中断
   this.LogQueue = [];             // 日志队列
   this.IsWriting = false;         // 日志写入锁
   this.ActionTimers = new Map();  // 玩家行动计时器
@@ -94,12 +95,21 @@ const Game = function (code, host) {
       player.DrawCard = '';
       player.Status = '';
       player.Options = [];
+      player.IsRiichi = false;
+      player.IsDoubleRiichi = false;
+      player.IsYiFa = false;
+      player.IsLingShang = false;
+      player.TenPai = false;
     }
     this.DealCards();
     this.RestCardsNum = 70;
     this.KanNum = 0;
-    this.MainCards = [{}, {}, {}, {}, this.Deck.DealRandomCard()];  // 牌山
-    this.LastRiverCard = [];
+    this.KanBreak = '';
+    this.MainCards = [];
+    this.MainCards.push(this.Deck.DealRandomCard());
+    this.LiDora = [];
+    this.LiDora.push(this.Deck.DealRandomCard());
+    this.LastRiverCard = { Card: {}, Player: null };
     // 打印所有玩家信息
     this.Log('\n\n=== 新一局开始 ===');
     if (this.StageNum <= 4) this.Log('东' + this.StageNum + '局  ' + this.RoundNum + '本场');
@@ -111,21 +121,38 @@ const Game = function (code, host) {
 
   // 抓牌
   this.Draw = (theplayer) => {
+    if (this.RestCardsNum == 0) {
+      this.Ryuukyoku();
+      return;
+    }
     this.Log(`${theplayer.UserName} 抓牌`);
     theplayer.DrawCard = this.Deck.DealRandomCard();
     this.RestCardsNum--;
     this.DrawCheck(theplayer);
     for (let player of this.Players) player.Status = '';
-    if (this.Stop) theplayer.Status = 'WaitingCardOrAction';
-    else theplayer.Status = 'WaitingCard';
-    this.Log(`${theplayer.UserName} 抓牌后状态: ${theplayer.Status}`);
-    this.Rerender();
+    if (this.Stop) {
+      theplayer.Status = 'WaitingCardOrAction';
+      if (theplayer.IsRiichi) theplayer.Status = 'WaitingTsumoOrKan';
+      this.Rerender();
+    }
+    else if (theplayer.IsRiichi) {
+      theplayer.IsYiFa = false;
+      this.Rerender();
+      setTimeout(() => {
+        this.PutOut(theplayer, theplayer.DrawCard, 'draw');
+      }, 500);
+    }
+    else {
+      theplayer.Status = 'WaitingCard';
+      this.Rerender();
+    }
   };
 
   // 打牌
   this.PutOut = (theplayer, card, type) => {
+    theplayer.IsLingShang = false;
     // 复制一份card，带Turn属性
-    let riverCard = Object.assign({}, card, { Turn: false });
+    let riverCard = Object.assign({}, card, { Turn: !theplayer.RiverCards.some(c => c.Turn === true) && theplayer.IsRiichi });
     theplayer.RiverCards.push(riverCard);
     theplayer.HistoryCards.push(card);
     if (type == 'draw') theplayer.DrawCard = '';
@@ -153,7 +180,10 @@ const Game = function (code, host) {
   // 转到下一个玩家
   this.MoveToNext = () => {
     let nextPos = (this.LastRiverCard.Player.Position + 1) % 4;
-    for (let player of this.Players) player.Status = '';
+    for (let player of this.Players) {
+      player.Status = '';
+      player.Options = [];
+    }
     for (let player of this.Players) if (player.Position === nextPos) this.Draw(player);
   };
 
@@ -161,7 +191,10 @@ const Game = function (code, host) {
   this.DealCards = () => {
     this.Deck.Shuffle();
     for (let player of this.Players) {
-      player.HandCards = [];
+      /*player.HandCards = [{ Value: 2, Type: 'm' }, { Value: 3, Type: 'm' }, { Value: 4, Type: 'm' },
+        { Value: 0, Type: 'm' }, { Value: 6, Type: 'm' }, { Value: 7, Type: 'p' },
+        { Value: 7, Type: 'p' }, { Value: 9, Type: 's' }, { Value: 9, Type: 's' },
+        { Value: 9, Type: 's' }, { Value: 2, Type: 'p' }, { Value: 2, Type: 'p' }, { Value: 2, Type: 'p' }];*/
       for (let i = 0; i < 13; i++) player.AddCard(this.Deck.DealRandomCard());
       player.SortHandCards();
     }
@@ -181,7 +214,8 @@ const Game = function (code, host) {
           RiverCards: p.RiverCards,
           ShowCards: p.ShowCards,
           DrawCard: p.DrawCard,
-          Options: p.Options
+          Options: p.Options,
+          IsRiichi: p.IsRiichi
         })),
         Position: player.Position,
         StageNum: this.StageNum,
@@ -200,13 +234,12 @@ const Game = function (code, host) {
     this.Stop = false;
     for (let player of this.Players) player.Options = [];
     if (this.RestCardsNum > 0 && this.KanNum <= 4 && this.CanAnKanOrKakan(theplayer)) { theplayer.Options.push('Kan'); this.Stop = true; }
-    if (this.CanRiichi(theplayer)) { theplayer.Options.push('Riichi'); this.Stop = true; this.Log(`${theplayer.UserName} 可以立直`); }
-    else { this.Log(`${theplayer.UserName} 不能立直`); }
-    if (this.CanTsumo(theplayer)) { theplayer.Options.push('Tsumo'); this.Stop = true; }
+    if (this.RestCardsNum > 0 && this.CanRiichi(theplayer) && !theplayer.IsRiichi) { theplayer.Options.push('Riichi'); this.Stop = true; }
+    if (this.CanTsumo(theplayer, theplayer.IsLingShang)) { theplayer.Options.push('Tsumo'); this.Stop = true; }
     this.Log(`${theplayer.UserName} 可选行动: ${theplayer.Options.join(' ')}`);
   };
 
-  // 检查
+  // 打牌检查
   this.PutOutCheck = (theplayer) => {
     this.Log('PutOutCheck');
     this.Stop = false;
@@ -214,13 +247,25 @@ const Game = function (code, host) {
       player.Options = [];
       if (player === theplayer) continue; // 只对其他三家检查
       let stop = false;
-      if (this.RestCardsNum > 0) {
+      if (this.RestCardsNum > 0 && !player.IsRiichi) {
         if (this.CanChi(player)) { player.Options.push('Chi'); this.Stop = true; stop = true; }
         if (this.CanPon(player)) { player.Options.push('Pon'); this.Stop = true; stop = true; }
         if (this.KanNum <= 4 && this.CanMinKan(player)) { player.Options.push('Kan'); this.Stop = true; stop = true; }
       }
-      if (this.CanRon(player)) { player.Options.push('Ron'); this.Stop = true; stop = true; }
+      if (this.CanRon(player, false)) { player.Options.push('Ron'); this.Stop = true; stop = true; }
       if (stop) { player.Options.push('Pass'); }
+      this.Log(`${player.UserName} 可选行动: ${player.Options.join(' ')}`);
+    }
+  };
+
+  // 加杠检查
+  this.KanCheck = (theplayer) => {
+    this.Log('KanCheck');
+    this.Stop = false;
+    for (let player of this.Players) {
+      player.Options = [];
+      if (player === theplayer) continue; // 只对其他三家检查
+      if (this.CanRon(player, true)) { player.Options.push('Ron'); this.Stop = true; player.Options.push('Pass'); }
       this.Log(`${player.UserName} 可选行动: ${player.Options.join(' ')}`);
     }
   };
@@ -331,6 +376,7 @@ const Game = function (code, host) {
     for (let player of this.Players) {
       player.Status = '';
       player.Options = [];
+      player.IsYiFa = false;
     }
     theplayer.Status = 'WaitingCard';
     this.Rerender();
@@ -356,7 +402,11 @@ const Game = function (code, host) {
   this.PonSelect = (theplayer) => {
     const card = this.LastRiverCard.Card;
     let count = 0;
-    for (let c of theplayer.HandCards) if (c.Type === card.Type && ((c.Value === 0) || (c.Value === 5))) count++;
+    let count0 = 0;
+    for (let c of theplayer.HandCards) {
+      if (c.Type === card.Type && ((c.Value === 0) || (c.Value === 5))) count++;
+      if (c.Type === card.Type && c.Value === 0) count0++;
+    }
     if (card.Value == 5 && count == 3) {
       theplayer.Status = 'WaitingSelect';
       theplayer.Options = [
@@ -366,6 +416,7 @@ const Game = function (code, host) {
       this.Rerender();
     }
     else if (card.Value == 0) this.Pon(theplayer, { Value: 5, Type: card.Type }, { Value: 5, Type: card.Type });
+    else if (card.Value == 5 && count0 == 1 && count == 2) this.Pon(theplayer, { Value: 0, Type: card.Type }, { Value: 5, Type: card.Type });
     else this.Pon(theplayer, card, card);
   }
 
@@ -401,6 +452,7 @@ const Game = function (code, host) {
     for (let player of this.Players) {
       player.Status = '';
       player.Options = [];
+      player.IsYiFa = false;
     }
     theplayer.Status = 'WaitingCard';
     this.Rerender();
@@ -574,6 +626,7 @@ const Game = function (code, host) {
         Closed: [true, false, false, true]
       });
       this.Log(`${theplayer.UserName} 暗杠了 ${kanCard.Value + kanCard.Type}`);
+      this.AnKanOrKakanContinue(theplayer);
     }
     // 加杠：移除1张，ShowCards中已有Pon，ShowCards只保留3张碰组
     else {
@@ -589,22 +642,35 @@ const Game = function (code, host) {
           }
         }
       }
+      this.LastRiverCard = { Card: kanCard, Player: theplayer };
       this.Log(`${theplayer.UserName} 加杠了 ${kanCard.Value + kanCard.Type}`);
+      this.KanCheck(theplayer);
+      if (this.Stop) {
+        for (let player of this.Players) {
+          player.Status = player.Options.length === 0 ? '' : 'WaitingAction';
+          this.Log(`${player.UserName} 加杠后状态: ${player.Status}`);
+        }
+        this.KanBreak = { Is: true, Player: theplayer };
+        this.Rerender();
+      }
+      else this.AnKanOrKakanContinue(theplayer);
     }
+  };
+
+  // 暗杠或加杠继续
+  this.AnKanOrKakanContinue = (theplayer) => {
     this.KanNum++;
     for (let player of this.Players) {
       player.Status = '';
       player.Options = [];
+      player.IsYiFa = false;
     }
     // 杠后翻新宝牌指示牌
-    for (let i = this.MainCards.length - 1; i >= 0; i--) {
-      if (Object.keys(this.MainCards[i]).length === 0) {
-        this.MainCards[i] = this.Deck.DealRandomCard();
-        this.Log(`新宝牌指示牌: ${this.MainCards[i].Value + this.MainCards[i].Type}`);
-        break;
-      }
-    }
+    this.MainCards.push(this.Deck.DealRandomCard());
+    this.LiDora.push(this.Deck.DealRandomCard());
+    this.Log(`新宝牌指示牌: ${this.MainCards[this.MainCards.length - 1].Value + this.MainCards[this.MainCards.length - 1].Type}`);
     this.Rerender();
+    theplayer.IsLingShang = true;
     this.Draw(theplayer);
   };
 
@@ -645,17 +711,15 @@ const Game = function (code, host) {
     for (let player of this.Players) {
       player.Status = '';
       player.Options = [];
+      player.IsYiFa = false;
     }
     this.Log(`${theplayer.UserName} 明杠了 ${kanCard.Value + kanCard.Type}`);
     // 杠后翻新宝牌指示牌
-    for (let i = this.MainCards.length - 1; i >= 0; i--) {
-      if (Object.keys(this.MainCards[i]).length === 0) {
-        this.MainCards[i] = this.Deck.DealRandomCard();
-        this.Log(`新宝牌指示牌: ${this.MainCards[i].Value + this.MainCards[i].Type}`);
-        break;
-      }
-    }
+    this.MainCards.push(this.Deck.DealRandomCard());
+    this.LiDora.push(this.Deck.DealRandomCard());
+    this.Log(`新宝牌指示牌: ${this.MainCards[this.MainCards.length - 1].Value + this.MainCards[this.MainCards.length - 1].Type}`);
     this.Rerender();
+    theplayer.IsLingShang = true;
     this.Draw(theplayer);
   };
 
@@ -668,66 +732,297 @@ const Game = function (code, host) {
     cardsList.push(handCardsString);
     if (ShowCards && ShowCards.length > 0) {
       for (let show of ShowCards) {
-        if (show.Type === 'Chi') {
-          cardsList.push(show.Cards[0].value.toString() + show.Cards[1].value.toString()
-            + show.Cards[2].value.toString() + show.Cards[0].Type);
-        } else if (show.Type === 'Pon') {
-          cardsList.push(show.Cards[0].value.toString().repeat(3) + show.Cards[0].Type);
+        if (show.Type === 'Chi' || show.Type === 'Pon') {
+          cardsList.push(show.Cards[0].Value.toString() + show.Cards[1].Value.toString() + show.Cards[2].Value.toString() + show.Cards[0].Type);
         } else if (show.Type === 'Minkan' || show.Type === 'Kakan') {
-          cardsList.push(show.Cards[0].value.toString().repeat(4) + show.Cards[0].Type);
+          if (show.Cards.some(c => (c.Value === 5 || c.Value === 0) && c.Type !== 'z')) cardsList.push('5505' + show.Cards[0].Type);
+          else cardsList.push(show.Cards[0].Value.toString().repeat(4) + show.Cards[0].Type);
         } else if (show.Type === 'Ankan') {
-          cardsList.push(show.Cards[0].value.toString().repeat(5) + show.Cards[0].Type);
+          if (show.Cards.some(c => (c.Value === 5 || c.Value === 0) && c.Type !== 'z')) cardsList.push('55055' + show.Cards[0].Type);
+          else cardsList.push(show.Cards[0].Value.toString().repeat(5) + show.Cards[0].Type);
         }
       }
     }
     return cardsList.join(" ");
   };
 
-  // 立直
-  this.Riichi = () => {
-
-  };
-
   this.CanRiichi = (theplayer) => {
     // 副露状态不能立直
-    if (Array.isArray(theplayer.ShowCards) && theplayer.ShowCards.length > 0) {
-      for (meld of theplayer.ShowCards)
-        if (meld.Type !== "Ankan")
-          return false;
-    }
-
-    // 特定规则下，余牌不足4张不能立直
-    if (this.RestCardsNum < 4)
-      return false;
-
+    if (Array.isArray(theplayer.ShowCards) && theplayer.ShowCards.length > 0)
+      for (let meld of theplayer.ShowCards) if (meld.Type !== 'Ankan') return false;
     // 检查听牌条件
     let handCardsString = this.HandCardsToString(theplayer.HandCards, theplayer.ShowCards, theplayer.DrawCard);
-    this.Log(`${theplayer.UserName} 立直检查手牌: ${handCardsString}`);
-    console.log(`立直检查手牌: ${handCardsString}`);
     let maj = new JapaneseMaj();
     let paixing = JapaneseMaj.getPaixingFromString(handCardsString);
-    if (maj.calcXiangting(paixing).best.xiangTingCount !== 0)
-      return false;
+    if (maj.calcXiangting(paixing).best.xiangTingCount !== 0) return false;
     return true;
   };
 
-  // 荣和
-  this.Ron = () => {
-
+  // 是否可以荣和
+  this.CanRon = (theplayer, isKakan) => {
+    let dora = [];
+    let lidora = [];
+    for (let i = 0; i < this.MainCards.length; i++) {
+      dora.push(JapaneseMaj.getPaiFromAscii(this.GetCardAscii(this.MainCards[i])));
+      lidora.push(JapaneseMaj.getPaiFromAscii(this.GetCardAscii(this.LiDora[i])));
+    }
+    let maj = new JapaneseMaj({
+      changFeng: this.GetChangFeng(), // Number类型，东风场为1，南风场为2，西风场为3，北风场为4
+      ziFeng: theplayer.Position + 1, // Number类型，自风，东1南2西3北4
+      dora: dora, //Array[Pai]类型，宝牌数组，注意这里是宝牌数组不是宝牌指示牌数组
+      lidora: theplayer.IsRiichi ? lidora : [], //Array[Pai]类型，里宝牌数组，注意这里是里宝牌数组不是里宝牌指示牌数组
+      isLiangLiZhi: theplayer.IsDoubleRiichi, //是否两立直
+      isLiZhi: theplayer.IsRiichi, //是否立直
+      isYiFa: theplayer.IsYiFa, //是否一发
+      isLingShang: false, //是否岭上
+      isZimo: false, //是否自摸 
+      isLast: this.RestCardsNum == 0, //是否是河底/海底
+      isQiangGang: isKakan, //是否是抢杠
+      isTianHe: false, //是否是天和
+      isDiHe: false, //是否是地和
+      isRenHe: false, //是否是人和
+      isYanFan: false, //是否是燕返
+      isGangZhen: false, //是否是杠振
+      isGuYi: false, //是否是古役
+      isLianFeng2Fu: false //连风牌雀头是否2符
+    });
+    let handCardsString = this.HandCardsToString(theplayer.HandCards, theplayer.ShowCards, this.LastRiverCard.Card);
+    let paixing = JapaneseMaj.getPaixingFromString(handCardsString);
+    let res = maj.getYakuCalculator(paixing);
+    if (res) {
+      let pointRes = res.calcYaku(maj.state);
+      let fan = pointRes.fan;
+      return fan > 0;
+    }
+    return false;
   };
 
-  this.CanRon = (theplayer) => {
+  // 荣和
+  this.Ron = (theplayer, isKakan) => {
+    let dora = [];
+    let lidora = [];
+    for (let i = 0; i < this.MainCards.length; i++) {
+      dora.push(JapaneseMaj.getPaiFromAscii(this.GetCardAscii(this.MainCards[i])));
+      lidora.push(JapaneseMaj.getPaiFromAscii(this.GetCardAscii(this.LiDora[i])));
+    }
+    let maj = new JapaneseMaj({
+      changFeng: this.GetChangFeng(), // Number类型，东风场为1，南风场为2，西风场为3，北风场为4
+      ziFeng: theplayer.Position + 1, // Number类型，自风，东1南2西3北4
+      dora: dora, //Array[Pai]类型，宝牌数组，注意这里是宝牌数组不是宝牌指示牌数组
+      lidora: theplayer.IsRiichi ? lidora : [], //Array[Pai]类型，里宝牌数组，注意这里是里宝牌数组不是里宝牌指示牌数组
+      isLiangLiZhi: theplayer.IsDoubleRiichi, //是否两立直
+      isLiZhi: theplayer.IsRiichi, //是否立直
+      isYiFa: theplayer.IsYiFa, //是否一发
+      isLingShang: false, //是否岭上
+      isZimo: false, //是否自摸 
+      isLast: this.RestCardsNum == 0, //是否是河底/海底
+      isQiangGang: isKakan, //是否是抢杠
+      isTianHe: false, //是否是天和
+      isDiHe: false, //是否是地和
+      isRenHe: false, //是否是人和
+      isYanFan: false, //是否是燕返
+      isGangZhen: false, //是否是杠振
+      isGuYi: false, //是否是古役
+      isLianFeng2Fu: false //连风牌雀头是否2符
+    });
+    let handCardsString = this.HandCardsToString(theplayer.HandCards, theplayer.ShowCards, this.LastRiverCard.Card);
+    let paixing = JapaneseMaj.getPaixingFromString(handCardsString);
+    let res = maj.getYakuCalculator(paixing);
+    let pointRes = res.calcYaku(maj.state);
+    for (let player of this.Players) {
+      player.Status = '';
+      player.Options = [];
+      player.IsYiFa = false;
+    }
+    let pointsChange = [0, 0, 0, 0];
+    pointsChange[theplayer.Position] = pointRes.point + 1000 * this.RiichiBang + 300 * this.RoundNum;
+    pointsChange[this.LastRiverCard.Player.Position] = -(pointRes.point + 300 * this.RoundNum);
+    this.RiichiBang = 0;
+    let PassOya = theplayer.Position !== 0;
+    for (let player of this.Players) {
+      player.Emit('showRonResult', {
+        position: player.Position,
+        players: this.Players.map(p => ({
+          Position: p.Position,
+          UserName: p.UserName,
+          Points: p.Points,
+          PointsChange: pointsChange[p.Position],
+        })),
+        playerName1: theplayer.UserName,
+        playerName2: this.LastRiverCard.Player.UserName,
+        fan: pointRes.fan,
+        fu: pointRes.fu.fu,
+        yaku: pointRes.yaku,
+        point: pointRes.point,
+        dora: pointRes.dora,
+        handCards: theplayer.HandCards,
+        ronCard: this.LastRiverCard.Card,
+        showCards: theplayer.ShowCards,
+        doraIndicators: this.MainCards,
+        liDoraIndicators: theplayer.IsRiichi ? this.LiDora : []
+      });
+    }
+    theplayer.Points += (pointRes.point + 1000 * this.RiichiBang + 300 * this.RoundNum);
+    this.LastRiverCard.Player.Points -= (pointRes.point + 300 * this.RoundNum);
+    // setTimeout(() => {
+    //   this.NextRound(PassOya, true);
+    // }, 8000);
+  };
 
+  // 是否可以自摸
+  this.CanTsumo = (theplayer, isLingShang) => {
+    let dora = [];
+    let lidora = [];
+    for (let i = 0; i < this.MainCards.length; i++) {
+      dora.push(JapaneseMaj.getPaiFromAscii(this.GetCardAscii(this.MainCards[i])));
+      lidora.push(JapaneseMaj.getPaiFromAscii(this.GetCardAscii(this.LiDora[i])));
+    }
+    let maj = new JapaneseMaj({
+      changFeng: this.GetChangFeng(), // Number类型，东风场为1，南风场为2，西风场为3，北风场为4
+      ziFeng: theplayer.Position + 1, // Number类型，自风，东1南2西3北4
+      dora: dora, //Array[Pai]类型，宝牌数组，注意这里是宝牌数组不是宝牌指示牌数组
+      lidora: theplayer.IsRiichi ? lidora : [], //Array[Pai]类型，里宝牌数组，注意这里是里宝牌数组不是里宝牌指示牌数组
+      isLiangLiZhi: theplayer.IsDoubleRiichi, //是否两立直
+      isLiZhi: theplayer.IsRiichi, //是否立直
+      isYiFa: theplayer.IsYiFa, //是否一发
+      isLingShang: isLingShang, //是否岭上
+      isZimo: true, //是否自摸 
+      isLast: this.RestCardsNum == 0, //是否是河底/海底
+      isQiangGang: false, //是否是抢杠
+      isTianHe: this.Players.every(p => p.ShowCards.length == 0) && theplayer.HistoryCards.length == 0 && theplayer.Position == 0, //是否是天和
+      isDiHe: this.Players.every(p => p.ShowCards.length == 0) && theplayer.HistoryCards.length == 0 && theplayer.Position !== 0, //是否是地和
+      isRenHe: false, //是否是人和
+      isYanFan: false, //是否是燕返
+      isGangZhen: false, //是否是杠振
+      isGuYi: false, //是否是古役
+      isLianFeng2Fu: false //连风牌雀头是否2符
+    });
+    let handCardsString = this.HandCardsToString(theplayer.HandCards, theplayer.ShowCards, theplayer.DrawCard);
+    let paixing = JapaneseMaj.getPaixingFromString(handCardsString);
+    let res = maj.getYakuCalculator(paixing);
+    if (res) {
+      let pointRes = res.calcYaku(maj.state);
+      let fan = pointRes.fan;
+      return fan > 0;
+    }
+    return false;
   };
 
   // 自摸
-  this.Tsumo = () => {
-
+  this.Tsumo = (theplayer, isLingShang) => {
+    let dora = [];
+    let lidora = [];
+    for (let i = 0; i < this.MainCards.length; i++) {
+      dora.push(JapaneseMaj.getPaiFromAscii(this.GetCardAscii(this.MainCards[i])));
+      lidora.push(JapaneseMaj.getPaiFromAscii(this.GetCardAscii(this.LiDora[i])));
+    }
+    let maj = new JapaneseMaj({
+      changFeng: this.GetChangFeng(), // Number类型，东风场为1，南风场为2，西风场为3，北风场为4
+      ziFeng: theplayer.Position + 1, // Number类型，自风，东1南2西3北4
+      dora: dora, //Array[Pai]类型，宝牌数组，注意这里是宝牌数组不是宝牌指示牌数组
+      lidora: theplayer.IsRiichi ? lidora : [], //Array[Pai]类型，里宝牌数组，注意这里是里宝牌数组不是里宝牌指示牌数组
+      isLiangLiZhi: theplayer.IsDoubleRiichi, //是否两立直
+      isLiZhi: theplayer.IsRiichi, //是否立直
+      isYiFa: theplayer.IsYiFa, //是否一发
+      isLingShang: isLingShang, //是否岭上
+      isZimo: true, //是否自摸 
+      isLast: this.RestCardsNum == 0, //是否是河底/海底
+      isQiangGang: false, //是否是抢杠
+      isTianHe: this.Players.every(p => p.ShowCards.length == 0) && theplayer.HistoryCards.length == 0 && theplayer.Position == 0, //是否是天和
+      isDiHe: this.Players.every(p => p.ShowCards.length == 0) && theplayer.HistoryCards.length == 0 && theplayer.Position !== 0, //是否是地和
+      isRenHe: false, //是否是人和
+      isYanFan: false, //是否是燕返
+      isGangZhen: false, //是否是杠振
+      isGuYi: false, //是否是古役
+      isLianFeng2Fu: false //连风牌雀头是否2符
+    });
+    let handCardsString = this.HandCardsToString(theplayer.HandCards, theplayer.ShowCards, theplayer.DrawCard);
+    let paixing = JapaneseMaj.getPaixingFromString(handCardsString);
+    let res = maj.getYakuCalculator(paixing);
+    let pointRes = res.calcYaku(maj.state);
+    for (let player of this.Players) {
+      player.Status = '';
+      player.Options = [];
+      player.IsYiFa = false;
+    }
+    let pointsChange = [0, 0, 0, 0];
+    pointsChange[theplayer.Position] = pointRes.point + 1000 * this.RiichiBang + 300 * this.RoundNum;
+    if (theplayer.Position == 0) {
+      for (let player of this.Players)
+        if (player.Position !== theplayer.Position)
+          pointsChange[player.Position] = -(pointRes.point_xian + 100 * this.RoundNum);
+    }
+    else {
+      for (let player of this.Players)
+        if (player.Position !== theplayer.Position)
+          pointsChange[player.Position] = -(player.Position == 0 ? pointRes.point_qin + 100 * this.RoundNum : pointRes.point_xian + 100 * this.RoundNum);
+    }
+    this.RiichiBang = 0;
+    let PassOya = theplayer.Position !== 0;
+    for (let player of this.Players) {
+      player.Emit('showTsumoResult', {
+        position: player.Position,
+        players: this.Players.map(p => ({
+          Position: p.Position,
+          UserName: p.UserName,
+          Points: p.Points,
+          PointsChange: pointsChange[p.Position],
+        })),
+        playerName: theplayer.UserName,
+        fan: pointRes.fan,
+        fu: pointRes.fu.fu,
+        yaku: pointRes.yaku,
+        point: pointRes.point,
+        dora: pointRes.dora,
+        handCards: theplayer.HandCards,
+        tsumoCard: theplayer.DrawCard,
+        showCards: theplayer.ShowCards,
+        doraIndicators: this.MainCards,
+        liDoraIndicators: theplayer.IsRiichi ? this.LiDora : []
+      });
+    }
+    theplayer.Points += (pointRes.point + 1000 * this.RiichiBang + 300 * this.RoundNum);
+    if (theplayer.Position == 0) {
+      for (let player of this.Players)
+        if (player.Position !== theplayer.Position)
+          player.Points -= pointRes.point_xian + 100 * this.RoundNum;
+    }
+    else {
+      for (let player of this.Players)
+        if (player.Position !== theplayer.Position)
+          player.Points -= player.Position == 0 ? pointRes.point_qin + 100 * this.RoundNum : pointRes.point_xian + 100 * this.RoundNum;
+    }
+    // setTimeout(() => {
+    //   this.NextRound(PassOya, true);
+    // }, 8000);
   };
 
-  this.CanTsumo = (theplayer) => {
-
+  // 获取场风
+  this.GetChangFeng = () => {
+    if (this.StageNum >= 1 && this.StageNum <= 4) return 1;
+    else if (this.StageNum >= 5 && this.StageNum <= 8) return 2;
+    else if (this.StageNum >= 9 && this.StageNum <= 12) return 3;
+    else if (this.StageNum >= 13 && this.StageNum <= 16) return 4;
   };
+
+  // 获取牌指向宝牌的ASCII码
+  this.GetCardAscii = (card) => {
+    if (card.Value === 0 && card.Type === 'm') return 5;
+    if (card.Value === 0 && card.Type === 'p') return 14;
+    if (card.Value === 0 && card.Type === 's') return 23;
+    if (card.Type === 'm') return card.Value % 9;
+    if (card.Type === 'p') return card.Value % 9 + 9;
+    if (card.Type === 's') return card.Value % 9 + 18;
+    if (card.Type === 'z') {
+      if (card.Value === 1) return 28;
+      if (card.Value === 2) return 29;
+      if (card.Value === 3) return 30;
+      if (card.Value === 4) return 27;
+      if (card.Value === 5) return 32;
+      if (card.Value === 6) return 33;
+      if (card.Value === 7) return 31;
+    }
+  }
 
   // 行动管理器
   this.ActionManager = () => {
@@ -745,7 +1040,13 @@ const Game = function (code, host) {
       }))
     ));
     if (this.ActionList.length == 1) {
-      if (this.ActionList[0].Action == 'Pass') this.MoveToNext();
+      if (this.ActionList[0].Action == 'Pass') {
+        if (this.KanBreak.Is) {
+          this.KanBreak.Is = false;
+          this.AnKanOrKakanContinue(this.KanBreak.Player);
+        }
+        else this.MoveToNext();
+      }
       else this.DoAction(this.ActionList[0].Player, this.ActionList[0].Action);
     }
     else {
@@ -759,7 +1060,13 @@ const Game = function (code, host) {
       };
       // 找出最高优先级
       let maxPriority = Math.max(...this.ActionList.map(a => actionPriority[a.Action] || 0));
-      if (maxPriority == 0) this.MoveToNext();
+      if (maxPriority == 0) {
+        if (this.KanBreak.Is) {
+          this.KanBreak.Is = false;
+          this.AnKanOrKakanContinue(this.KanBreak.Player);
+        }
+        else this.MoveToNext();
+      }
       else {
         let finalActions = this.ActionList.filter(a => actionPriority[a.Action] === maxPriority);
         if (maxPriority == 3) {
@@ -787,30 +1094,92 @@ const Game = function (code, host) {
       if (!theplayer.DrawCard) this.MinKanSelect(theplayer);
       else this.AnKanOrKakanSelect(theplayer);
     }
-    if (Action == 'Riichi') this.Riichi(theplayer);
-    if (Action == 'Ron') this.Ron(theplayer);
-    if (Action == 'Tsumo') this.Tsumo(theplayer);
+    if (Action == 'Riichi') theplayer.Status = 'WaitingRiichi';
+    if (Action == 'Ron') this.Ron(theplayer, this.KanBreak.Is);
+    if (Action == 'Tsumo') this.Tsumo(theplayer, theplayer.IsLingShang);
   }
 
   // 开始下一局
-  this.NextRound = () => {
-    if (this.PassZhuang) {
-      this.StageNum++;
-      this.RoundNum = 0;
-      for (let player of this.Players) {
-        player.Position = (player.Position + 3) % 4;
+  this.NextRound = (PassOya, AgariEnd) => {
+    if (PassOya) {
+      if (this.StageNum == 8) {
+        this.EndGame();
+        return;
       }
-      this.PassZhuang = false;
+      this.StageNum++;
+      for (let player of this.Players) player.Position = (player.Position + 3) % 4;
     }
-    else {
-      this.RoundNum++;
-    }
+    if (!AgariEnd || !PassOya) this.RoundNum++;
+    else this.RoundNum = 0;
     this.StartNewRound();
   };
 
+  // 流局
+  this.Ryuukyoku = () => {
+    this.Log('流局');
+    let PointsBeforeRyuukyoku = this.Players.map(p => p.Points);
+    for (let player of this.Players) {
+      let handCardsString = this.HandCardsToString(player.HandCards, player.ShowCards, '');
+      let maj = new JapaneseMaj();
+      let paixing = JapaneseMaj.getPaixingFromString(handCardsString);
+      if (maj.calcXiangting(paixing).best.xiangTingCount == 0) player.TenPai = true;
+    }
+    let count = this.Players.filter(p => p.TenPai).length;
+    let PassOya = false
+    if (count == 0) PassOya = true;
+    else if (count == 1) {
+      for (let player of this.Players) {
+        if (player.TenPai) player.Points += 3000;
+        else player.Points -= 1000;
+        if (player.Position == 0 && !player.TenPai) PassOya = true;
+      }
+    }
+    else if (count == 2) {
+      for (let player of this.Players) {
+        if (player.TenPai) player.Points += 1500;
+        else player.Points -= 1500;
+        if (player.Position == 0 && !player.TenPai) PassOya = true;
+      }
+    }
+    else if (count == 3) {
+      for (let player of this.Players) {
+        if (player.TenPai) player.Points += 1000;
+        else player.Points -= 3000;
+        if (player.Position == 0 && !player.TenPai) PassOya = true;
+      }
+    }
+    else if (count == 4) PassOya = false;
+    this.EmitToPlayers('showRyuukyokuResult', {
+      playerName1: this.Players[0].UserName,
+      playerName2: this.Players[1].UserName,
+      playerName3: this.Players[2].UserName,
+      playerName4: this.Players[3].UserName,
+      playerPointsChange1: this.Players[0].Points - PointsBeforeRyuukyoku[0],
+      playerPointsChange2: this.Players[1].Points - PointsBeforeRyuukyoku[1],
+      playerPointsChange3: this.Players[2].Points - PointsBeforeRyuukyoku[2],
+      playerPointsChange4: this.Players[3].Points - PointsBeforeRyuukyoku[3]
+    });
+    setTimeout(() => {
+      this.NextRound(PassOya, false);
+    }, 8000);
+  }
 
-
-
+  // 终局
+  this.EndGame = () => {
+    this.Log('终局');
+    // 按点数排序
+    this.Players.sort((a, b) => b.Points - a.Points);
+    this.EmitToPlayers('showEndGameResult', {
+      playerName1: this.Players[0].UserName,
+      playerName2: this.Players[1].UserName,
+      playerName3: this.Players[2].UserName,
+      playerName4: this.Players[3].UserName,
+      playerPoints1: this.Players[0].Points,
+      playerPoints2: this.Players[1].Points,
+      playerPoints3: this.Players[2].Points,
+      playerPoints4: this.Players[3].Points
+    });
+  }
 };
 
 module.exports = Game; 
