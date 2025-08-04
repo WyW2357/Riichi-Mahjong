@@ -135,8 +135,14 @@ socket.on('rerender', function (data) {
     const windIdx = (data.Position + i) % 4;
     const wind = windNames[windIdx];
     const className = classNames[i];
-    const redStyle = (windIdx === 0) ? ' style="color:#d22;"' : '';
-    $('#gameDiv').append('<span class="wind-label ' + className + '"' + redStyle + '>' + wind + '</span>');
+    const activeStyle = (windIdx === data.ActivePlayer) ? ' style="background-color:#ffe066;' : ' style="background-color:#fff3;';
+    const redStyle = (windIdx === 0) ? ' color:#d22;' : '';
+    $('#gameDiv').append('<span class="wind-label ' + className + '"' + activeStyle + redStyle + '">' + wind + '</span>');
+  }
+
+  // 自己的振听标记
+  if (data.IsFuriten) {
+    $('#gameDiv').append('<span class="furiten-mark">振听</span>');
   }
 
   // 以自己为下方旋转Players数组
@@ -146,7 +152,7 @@ socket.on('rerender', function (data) {
   players.forEach(function (player, idx) {
     var dir = pos2dir[idx]; // idx=0:自己, 1:下家, 2:对家, 3:上家
     // 渲染立直棒
-    if (player.IsRiichi) {
+    if (player.IsRiichi && player.RiichiProcessed) {
       $('#gameDiv').append('<img src="img/RiichiBou.svg" class="riichibou ' + dir + '">');
     }
     // 渲染点数
@@ -181,18 +187,30 @@ socket.on('rerender', function (data) {
       }
     }
 
-    // 渲染手牌
+    // 渲染手牌（局中与流局两种情况）
     for (let idx = 0; idx < player.HandCards.length; idx++) {
       let card = player.HandCards[idx];
       let posStyle = 'left:' + leftBound + 'px;top:' + upperBound + 'px;';
-      if (dir === 'east') {
-        let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-        tileContainer.append('<span class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '"'
-          + ' data-card-index="' + idx + '" data-card-type="hand">'
-          + cardImg + '</span>');
+      if (!data.IsRyuuKyoku) {
+        // 局中时只显示自己手牌
+        if (dir === 'east') {
+          let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
+          tileContainer.append('<span class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '"'
+            + ' data-card-index="' + idx + '" data-card-type="hand">'
+            + cardImg + '</span>');
+        }
+        else {
+          tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
+        }
       }
       else {
-        tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
+        // 流局时显示听牌玩家手牌
+        if (player.IsTenPai || dir === 'east') {
+          let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
+          tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '">' + cardImg + '</span>');
+        } else {
+          tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
+        }
       }
       leftBound += 38;
     }
@@ -334,6 +352,17 @@ socket.on('rerender', function (data) {
     console.log('选中牌:', cardType, cardIndex, cardValue);
   });
 
+  // 右键摸切功能
+  $('#gameDiv').off('contextmenu').on('contextmenu', function (e) {
+    e.preventDefault(); // 阻止默认右键菜单
+    const card = players[0].DrawCard;
+    if (card) {
+      // 发送摸切请求到服务器
+      socket.emit('selectCard', { Card: card, Type: 'draw' });
+      console.log('摸切牌:', card);
+    }
+  });
+
   // 绑定点击事件
   $('.game-action-btn-select').off('click').on('click', function () {
     const idx = $(this).data('idx');
@@ -418,6 +447,28 @@ const doraTypeMap = {
   LiDora: '里宝牌'
 };
 
+const renderPointsBoard = (data) => {
+  const myPos = data.position;
+  const players = data.players.slice().sort((a, b) => ((a.Position - myPos + 4) % 4) - ((b.Position - myPos + 4) % 4));
+  const windNames = ['东', '南', '西', '北'];
+  const classNames = ['east', 'south', 'west', 'north'];
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const windIdx = (data.position + i) % 4;
+    const wind = windNames[windIdx];
+    const className = classNames[i];
+    html += `<div class='player-board ${className}'>`;
+    html += `<div><span>${wind} ${players[i].UserName}</span></div>`;
+    html += `<div><span>${players[i].Points}</span>`;
+    if (players[i].PointsChange > 0)
+      html += `<span style='color: red;'> +${players[i].PointsChange}</span>`;
+    else if (players[i].PointsChange < 0)
+      html += `<span style='color: blue;'> ${players[i].PointsChange}</span>`;
+    html += '</div></div>';
+  }
+  return html;
+}
+
 // 共享的显示结果函数
 const showWinResult = (data, isTsumo) => {
   // 合并役种和宝牌
@@ -491,31 +542,15 @@ const showWinResult = (data, isTsumo) => {
   // 添加到页面
   $('body').append(modalHtml);
 
-  // 寻找各玩家的方位和id
-  const myPos = data.position;
-  const players = data.players.slice().sort((a, b) => ((a.Position - myPos + 4) % 4) - ((b.Position - myPos + 4) % 4));
-  const windNames = ['东', '南', '西', '北'];
-  const classNames = ['east', 'south', 'west', 'north'];
-  for (let i = 0; i < 4; i++) {
-    const windIdx = (data.position + i) % 4;
-    const wind = windNames[windIdx];
-    const className = classNames[i];
-    $('.points-board').append("<div class='player-board " + className + "'></div>");
-    const windAndId = `${wind} ${players[i].UserName}`;
-    $('.player-board.' + className).append('<div><span>' + windAndId + '</span></div>');
-    $('.player-board.' + className).append('<div id="points-' + className + '"><span>' + players[i].Points + '</span></div>');
-    if (players[i].PointsChange > 0)
-      $('#points-' + className).append('<span style="color: red;"> +' + players[i].PointsChange + '</span>');
-    else if (players[i].PointsChange < 0)
-      $('#points-' + className).append('<span style="color: blue;"> ' + players[i].PointsChange + '</span>');
-  }
+  // 渲染玩家点数板
+  $('.points-board').html(renderPointsBoard(data));
 
-  // 5秒后自动关闭
-  // setTimeout(() => {
-  //   $(`#${modalId}`).fadeOut(500, function () {
-  //     $(this).remove();
-  //   });
-  // }, 5000);
+  // 8秒后自动关闭
+  setTimeout(() => {
+    $(`#${modalId}`).fadeOut(500, function () {
+      $(this).remove();
+    });
+  }, 8000);
 };
 
 // 处理荣和结果显示
@@ -529,29 +564,23 @@ socket.on('showTsumoResult', function (data) {
 });
 
 // 处理流局结果显示
-socket.on('showRyuukyokuResult', function (data) {
-  const modalId = 'RyuukyokuResultModal';
+socket.on('showRyuuKyokuResult', function (data) {
+  const modalId = 'RyuuKyokuResultModal';
   const modalHtml = `
-    <div id="${modalId}" class="modal" style="display: block; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-      <div class="modal-content" style="background-color: rgba(254,254,254,0.8); margin: 3% auto; padding: 30px; border: 1px solid #888; width: 90%; max-width: 800px; border-radius: 8px; max-height: 85vh; overflow-y: auto;">
-        <h4 style="color: #d32f2f; text-align: center;">流局</h4>
+    <div id="${modalId}" class="game-modal">
+      <div class="game-modal-content">
+        <h4>流局</h4>
         <div style="margin: 20px 0;">
-          <div style="margin-bottom: 15px;">
-            <div style="margin: 5px 0;">
-              ${data.playerName1} (${data.playerPointsChange1}点)
-              <span style="margin: 0 20px;">&nbsp;</span>
-              ${data.playerName2} (${data.playerPointsChange2}点)
-              <span style="margin: 0 20px;">&nbsp;</span>
-              ${data.playerName3} (${data.playerPointsChange3}点)
-              <span style="margin: 0 20px;">&nbsp;</span>
-              ${data.playerName4} (${data.playerPointsChange4}点)
-            </div>
-          </div>
+          <div class="points-board"></div>
         </div>
       </div>
     </div>
   `;
   $('body').append(modalHtml);
+
+  // 渲染玩家点数板
+  $('.points-board').html(renderPointsBoard(data));
+
   setTimeout(() => {
     $(`#${modalId}`).fadeOut(500, function () {
       $(this).remove();
@@ -563,9 +592,9 @@ socket.on('showRyuukyokuResult', function (data) {
 socket.on('showEndGameResult', function (data) {
   const modalId = 'endGameResultModal';
   const modalHtml = `
-    <div id="${modalId}" class="modal" style="display: block; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-      <div class="modal-content" style="background-color: rgba(254,254,254,0.8); margin: 3% auto; padding: 30px; border: 1px solid #888; width: 90%; max-width: 800px; border-radius: 8px; max-height: 85vh; overflow-y: auto;">
-        <h4 style="color: #d32f2f; text-align: center;">终局</h4>
+    <div id="${modalId}" class="game-modal">
+      <div class="game-modal-content">
+        <h4>终局</h4>
         <div style="margin: 20px 0;">
           <div style="margin-bottom: 15px;">
             <div style="margin: 5px 0;">

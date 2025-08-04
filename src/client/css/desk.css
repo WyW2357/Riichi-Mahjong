@@ -108,28 +108,33 @@ html {
 #gameDiv .wind-label.east {
   left: 348px;
   top: 508px;
-  background: #ffe066;
 }
 
 #gameDiv .wind-label.south {
   left: 508px;
   top: 508px;
-  background: #fff3;
   rotate: 270deg;
 }
 
 #gameDiv .wind-label.west {
   left: 508px;
   top: 348px;
-  background: #fff3;
   rotate: 180deg;
 }
 
 #gameDiv .wind-label.north {
   left: 348px;
   top: 348px;
-  background: #fff3;
   rotate: 90deg;
+}
+
+#gameDiv .furiten-mark {
+  position: absolute;
+  color: #d32f2f;
+  z-index: 30;
+  right: 778px;
+  bottom: 12px;
+  font-size: 20px;
 }
 
 #gameDiv .riichibou {

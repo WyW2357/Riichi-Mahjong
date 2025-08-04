@@ -14,7 +14,14 @@ const Player = function (playername, socket) {
   this.IsDoubleRiichi = false;
   this.IsYiFa = false;
   this.IsLingShang = false;
-  this.IsTingPai = false;
+  this.TenPai = false;
+  this.MachiHai = [];
+  this.RiichiProcessed = false;
+  this.Furiten = {
+    discard: false,
+    temporary: false,
+    riichi: false,
+  };
 
   //摸牌
   this.AddCard = (card) => {
@@ -51,6 +58,8 @@ const Player = function (playername, socket) {
       }
     }
   };
+
+  this.CheckFuriten = () => this.Furiten.discard || this.Furiten.temporary || this.Furiten.riichi;
 };
 
 module.exports = Player; 

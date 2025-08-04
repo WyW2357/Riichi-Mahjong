@@ -1,3 +1,4 @@
+const Card = require('./card');            // 引入牌类
 const Deck = require('./deck');            // 引入牌组类
 const Player = require('./player');        // 引入玩家类
 const fs = require('fs');                  // 引入文件系统模块
@@ -14,6 +15,7 @@ const Game = function (code, host) {
   this.RiichiBang = 0;            // 立直棒数
   this.RoundInProgress = false;   // 是否正在进行
   this.LastRiverCard = '';        // {Card, Player}
+  this.ActivePlayer = null;       // 当前行动玩家
   this.Stop = false;              // 是否停止
   this.ActionList = [];           // 行动列表
   this.KanNum = 0;                // 杠数
@@ -100,6 +102,13 @@ const Game = function (code, host) {
       player.IsYiFa = false;
       player.IsLingShang = false;
       player.TenPai = false;
+      player.MachiHai = [];
+      player.RiichiProcessed = false;
+      player.Furiten = {
+        discard: false,
+        temporary: false,
+        riichi: false,
+      };
     }
     this.DealCards();
     this.RestCardsNum = 70;
@@ -122,12 +131,13 @@ const Game = function (code, host) {
   // 抓牌
   this.Draw = (theplayer) => {
     if (this.RestCardsNum == 0) {
-      this.Ryuukyoku();
+      this.RyuuKyoku();
       return;
     }
     this.Log(`${theplayer.UserName} 抓牌`);
     theplayer.DrawCard = this.Deck.DealRandomCard();
     this.RestCardsNum--;
+    this.ActivePlayer = theplayer.Position;
     this.DrawCheck(theplayer);
     for (let player of this.Players) player.Status = '';
     if (this.Stop) {
@@ -166,6 +176,7 @@ const Game = function (code, host) {
       }
     }
     this.LastRiverCard = { Card: card, Player: theplayer };
+    theplayer.Furiten.temporary = false;  // 解除同巡振听
     this.PutOutCheck(theplayer);
     if (this.Stop) {
       for (let player of this.Players) {
@@ -174,7 +185,12 @@ const Game = function (code, host) {
       }
       this.Rerender();
     }
-    else this.MoveToNext();
+    else {
+      if (theplayer.IsRiichi && !theplayer.RiichiProcessed)
+        this.ProcessRiichiSuccess(theplayer);
+      this.CheckTemporaryOrRiichiFuriten(theplayer);
+      this.MoveToNext();
+    }
   };
 
   // 转到下一个玩家
@@ -191,17 +207,31 @@ const Game = function (code, host) {
   this.DealCards = () => {
     this.Deck.Shuffle();
     for (let player of this.Players) {
-      /*player.HandCards = [{ Value: 2, Type: 'm' }, { Value: 3, Type: 'm' }, { Value: 4, Type: 'm' },
-        { Value: 0, Type: 'm' }, { Value: 6, Type: 'm' }, { Value: 7, Type: 'p' },
-        { Value: 7, Type: 'p' }, { Value: 9, Type: 's' }, { Value: 9, Type: 's' },
-        { Value: 9, Type: 's' }, { Value: 2, Type: 'p' }, { Value: 2, Type: 'p' }, { Value: 2, Type: 'p' }];*/
+      // if (true) {
+      //   player.HandCards = [{ Value: 2, Type: 'm' }, { Value: 3, Type: 'm' }, { Value: 4, Type: 'm' },
+      //   { Value: 0, Type: 'm' }, { Value: 6, Type: 'm' }, { Value: 7, Type: 'p' },
+      //   { Value: 7, Type: 'p' }, { Value: 7, Type: 's' }, { Value: 8, Type: 's' },
+      //   { Value: 9, Type: 's' }, { Value: 2, Type: 'p' }, { Value: 3, Type: 'p' }, { Value: 4, Type: 'p' }];
+      // }
       for (let i = 0; i < 13; i++) player.AddCard(this.Deck.DealRandomCard());
       player.SortHandCards();
+
+      let HandCardsString = this.HandCardsToString(player.HandCards, player.ShowCards);
+      let paixing = JapaneseMaj.getPaixingFromString(HandCardsString);
+      let maj = new JapaneseMaj();
+      let results = maj.calcXiangting(paixing);
+      if (results.best.xiangTingCount === 0) {
+        player.TenPai = true;
+        player.MachiHai = results.best.divideResult.map(x => {
+          let cardString = x.serialize();
+          return new Card(Number(cardString[0]), cardString[1]);
+        });
+      }
     }
   };
 
   // 重新渲染
-  this.Rerender = () => {
+  this.Rerender = (IsRyuuKyoku) => {
     // 只推送必要信息，手牌只推送给本人
     for (let player of this.Players) {
       const data = {
@@ -215,9 +245,14 @@ const Game = function (code, host) {
           ShowCards: p.ShowCards,
           DrawCard: p.DrawCard,
           Options: p.Options,
-          IsRiichi: p.IsRiichi
+          IsRiichi: p.IsRiichi,
+          IsTenPai: p.TenPai,
+          RiichiProcessed: p.RiichiProcessed,
         })),
         Position: player.Position,
+        IsFuriten: player.CheckFuriten(),
+        IsRyuuKyoku: IsRyuuKyoku || false,
+        ActivePlayer: this.ActivePlayer,
         StageNum: this.StageNum,
         RoundNum: this.RoundNum,
         RiichiBang: this.RiichiBang,
@@ -242,6 +277,31 @@ const Game = function (code, host) {
   // 打牌检查
   this.PutOutCheck = (theplayer) => {
     this.Log('PutOutCheck');
+    // 检查当前玩家的待牌与舍牌振听状态
+    let HandCardsString = this.HandCardsToString(theplayer.HandCards, theplayer.ShowCards);
+    let paixing = JapaneseMaj.getPaixingFromString(HandCardsString);
+    let maj = new JapaneseMaj();
+    let results = maj.calcXiangting(paixing);
+    if (results.best.xiangTingCount === 0) {
+      theplayer.TenPai = true;
+      theplayer.MachiHai = results.best.divideResult.map(x => {
+        let cardString = x.serialize();
+        return new Card(Number(cardString[0]), cardString[1]);
+      });
+      // 检查舍牌记录中是否存在待牌中的牌
+      theplayer.Furiten.discard = theplayer.HistoryCards.some(c => theplayer.MachiHai.some(m => m.Value === c.Value && m.Type === c.Type));
+      this.Log(`${theplayer.UserName} TenPai: ${theplayer.TenPai}, MachiHai: ${theplayer.MachiHai.map(c => c.Value + c.Type).join(' ')}`);
+      if (theplayer.Furiten.discard) {
+        this.Log(`${theplayer.UserName} Discard Furiten: true`);
+      }
+    }
+    else {
+      theplayer.TenPai = false;
+      theplayer.MachiHai = [];
+      theplayer.Furiten.discard = false;
+    }
+
+    // 检查其他玩家对舍牌的可能行为
     this.Stop = false;
     for (let player of this.Players) {
       player.Options = [];
@@ -359,6 +419,7 @@ const Game = function (code, host) {
 
   // 吃
   this.Chi = (theplayer, chiCard1, chiCard2) => {
+    this.ActivePlayer = theplayer.Position;
     const card = this.LastRiverCard.Card;
     theplayer.RemoveCard(chiCard1);
     theplayer.RemoveCard(chiCard2);
@@ -422,6 +483,7 @@ const Game = function (code, host) {
 
   // 碰
   this.Pon = (theplayer, poncard1, poncard2) => {
+    this.ActivePlayer = theplayer.Position;
     const card = this.LastRiverCard.Card;
     theplayer.RemoveCard(poncard1);
     theplayer.RemoveCard(poncard2);
@@ -470,20 +532,40 @@ const Game = function (code, host) {
       if (!typeMap[theplayer.DrawCard.Type]) typeMap[theplayer.DrawCard.Type] = [];
       typeMap[theplayer.DrawCard.Type].push(theplayer.DrawCard);
       // 暗杠：只能在自己摸牌后（DrawCard有值）
-      for (let type in typeMap) {
-        const cards = typeMap[type];
-        const zeroes = cards.filter(c => c.Value === 0);
-        const fives = cards.filter(c => c.Value === 5);
-        if (zeroes.length == 1 && fives.length == 3) return true;
-        // 其他数字的暗杠
-        const valueMap = {};
-        for (let c of cards) {
-          if ((type === 'm' || type === 'p' || type === 's') && (c.Value === 0 || c.Value === 5)) continue;
-          const key = c.Value;
-          if (!valueMap[key]) valueMap[key] = [];
-          valueMap[key].push(c);
+      if (theplayer.IsRiichi) {
+        // 立直特殊暗杠判断
+        // 只能杠自己的摸牌（DrawCard）
+        const KanCard = theplayer.DrawCard;
+        const equalCard = ((card1, card2) => {
+          let value1 = card1.Value === 0 ? 5 : card1.Value;
+          let value2 = card2.Value === 0 ? 5 : card1.Value;
+          return (value1 === value2) && (card1.Type === card2.Type);
+        });
+        let count = 0;
+        for (let c of theplayer.HandCards) {
+          if (equalCard(KanCard, c))
+            count += 1;
         }
-        for (let v in valueMap) if (valueMap[v].length == 4) return true;
+        if (count !== 3) return false;
+        // 开杠前后不能改变听牌
+
+      }
+      else {
+        for (let type in typeMap) {
+          const cards = typeMap[type];
+          const zeroes = cards.filter(c => c.Value === 0);
+          const fives = cards.filter(c => c.Value === 5);
+          if (zeroes.length == 1 && fives.length == 3) return true;
+          // 其他数字的暗杠
+          const valueMap = {};
+          for (let c of cards) {
+            if ((type === 'm' || type === 'p' || type === 's') && (c.Value === 0 || c.Value === 5)) continue;
+            const key = c.Value;
+            if (!valueMap[key]) valueMap[key] = [];
+            valueMap[key].push(c);
+          }
+          for (let v in valueMap) if (valueMap[v].length == 4) return true;
+        }
       }
       // 加杠（Kakan）：只要ShowCards中有Pon组，且手牌（含DrawCard）中有该组的第4张即可
       if (theplayer.ShowCards && theplayer.ShowCards.length > 0) {
@@ -676,6 +758,7 @@ const Game = function (code, host) {
 
   // 明杠
   this.MinKan = (theplayer, kanCard) => {
+    this.ActivePlayer = theplayer.Position;
     // 明杠：移除3张，ShowCards加1组
     let handCards = theplayer.HandCards.filter(c => c.Type === kanCard.Type && (c.Value === kanCard.Value || (c.Value === 0 && kanCard.Value === 5) || (c.Value === 5 && kanCard.Value === 0)));
     for (let i = 0; i < 3; i++) theplayer.RemoveCard(handCards[i]);
@@ -760,6 +843,8 @@ const Game = function (code, host) {
 
   // 是否可以荣和
   this.CanRon = (theplayer, isKakan) => {
+    // 振听检查
+    if (theplayer.CheckFuriten()) return false;
     let dora = [];
     let lidora = [];
     for (let i = 0; i < this.MainCards.length; i++) {
@@ -837,7 +922,6 @@ const Game = function (code, host) {
     let pointsChange = [0, 0, 0, 0];
     pointsChange[theplayer.Position] = pointRes.point + 1000 * this.RiichiBang + 300 * this.RoundNum;
     pointsChange[this.LastRiverCard.Player.Position] = -(pointRes.point + 300 * this.RoundNum);
-    this.RiichiBang = 0;
     let PassOya = theplayer.Position !== 0;
     for (let player of this.Players) {
       player.Emit('showRonResult', {
@@ -864,9 +948,10 @@ const Game = function (code, host) {
     }
     theplayer.Points += (pointRes.point + 1000 * this.RiichiBang + 300 * this.RoundNum);
     this.LastRiverCard.Player.Points -= (pointRes.point + 300 * this.RoundNum);
-    // setTimeout(() => {
-    //   this.NextRound(PassOya, true);
-    // }, 8000);
+    this.RiichiBang = 0;
+    setTimeout(() => {
+      this.NextRound(PassOya, true);
+    }, 10000);
   };
 
   // 是否可以自摸
@@ -957,7 +1042,6 @@ const Game = function (code, host) {
         if (player.Position !== theplayer.Position)
           pointsChange[player.Position] = -(player.Position == 0 ? pointRes.point_qin + 100 * this.RoundNum : pointRes.point_xian + 100 * this.RoundNum);
     }
-    this.RiichiBang = 0;
     let PassOya = theplayer.Position !== 0;
     for (let player of this.Players) {
       player.Emit('showTsumoResult', {
@@ -992,9 +1076,10 @@ const Game = function (code, host) {
         if (player.Position !== theplayer.Position)
           player.Points -= player.Position == 0 ? pointRes.point_qin + 100 * this.RoundNum : pointRes.point_xian + 100 * this.RoundNum;
     }
-    // setTimeout(() => {
-    //   this.NextRound(PassOya, true);
-    // }, 8000);
+    this.RiichiBang = 0;
+    setTimeout(() => {
+      this.NextRound(PassOya, true);
+    }, 10000);
   };
 
   // 获取场风
@@ -1045,7 +1130,12 @@ const Game = function (code, host) {
           this.KanBreak.Is = false;
           this.AnKanOrKakanContinue(this.KanBreak.Player);
         }
-        else this.MoveToNext();
+        else {
+          if (this.LastRiverCard.Player.IsRiichi && !this.LastRiverCard.Player.RiichiProcessed)
+            this.ProcessRiichiSuccess(this.LastRiverCard.Player);
+          this.CheckTemporaryOrRiichiFuriten(this.LastRiverCard.Player);
+          this.MoveToNext();
+        }
       }
       else this.DoAction(this.ActionList[0].Player, this.ActionList[0].Action);
     }
@@ -1065,7 +1155,12 @@ const Game = function (code, host) {
           this.KanBreak.Is = false;
           this.AnKanOrKakanContinue(this.KanBreak.Player);
         }
-        else this.MoveToNext();
+        else {
+          if (this.LastRiverCard.Player.IsRiichi && !this.LastRiverCard.Player.RiichiProcessed)
+            this.ProcessRiichiSuccess(this.LastRiverCard.Player);
+          this.CheckTemporaryOrRiichiFuriten(this.LastRiverCard.Player);
+          this.MoveToNext();
+        }
       }
       else {
         let finalActions = this.ActionList.filter(a => actionPriority[a.Action] === maxPriority);
@@ -1088,6 +1183,13 @@ const Game = function (code, host) {
 
   // 行动
   this.DoAction = (theplayer, Action) => {
+    if ((Action == 'Chi' || Action == 'Pon' || Action == 'Kan')
+      && this.LastRiverCard.Player.IsRiichi && !this.LastRiverCard.Player.RiichiProcessed) {
+      this.ProcessRiichiSuccess(this.LastRiverCard.Player);
+    }
+    if (Action != 'Ron')
+      this.CheckTemporaryOrRiichiFuriten(this.LastRiverCard.Player);
+
     if (Action == 'Chi') this.ChiSelect(theplayer);
     if (Action == 'Pon') this.PonSelect(theplayer);
     if (Action == 'Kan') {
@@ -1097,6 +1199,32 @@ const Game = function (code, host) {
     if (Action == 'Riichi') theplayer.Status = 'WaitingRiichi';
     if (Action == 'Ron') this.Ron(theplayer, this.KanBreak.Is);
     if (Action == 'Tsumo') this.Tsumo(theplayer, theplayer.IsLingShang);
+  }
+
+  // 处理立直成功
+  this.ProcessRiichiSuccess = (theplayer) => {
+    theplayer.Points -= 1000;
+    this.RiichiBang += 1;
+    theplayer.RiichiProcessed = true; // 标记已处理
+    this.Rerender();
+    this.Log(`${theplayer.UserName} 立直成功，扣除1000点`);
+  };
+
+  // 检查同巡振听和立直后振听
+  this.CheckTemporaryOrRiichiFuriten = (theplayer) => {
+    for (let player of this.Players) {
+      if (player === theplayer) continue;
+      if (player.MachiHai.some(c => c.Type === this.LastRiverCard.Card.Type && c.Value === this.LastRiverCard.Card.Value)) {
+        if (player.IsRiichi) {
+          player.Furiten.riichi = true; // 立直后振听
+          this.Log(`${player.UserName} 立直后振听`);
+        }
+        else {
+          player.Furiten.temporary = true; // 同巡振听
+          this.Log(`${player.UserName} 同巡振听`);
+        }
+      }
+    }
   }
 
   // 开始下一局
@@ -1111,21 +1239,32 @@ const Game = function (code, host) {
     }
     if (!AgariEnd || !PassOya) this.RoundNum++;
     else this.RoundNum = 0;
+
+    // 记录每个人的点数
+    this.Log('终局点数');
+    for (let player of this.Players)
+      this.Log(`${player.UserName} 点数: ${player.Points}`);
+
     this.StartNewRound();
   };
 
   // 流局
-  this.Ryuukyoku = () => {
+  this.RyuuKyoku = () => {
     this.Log('流局');
-    let PointsBeforeRyuukyoku = this.Players.map(p => p.Points);
+    let PointsBeforeRyuuKyoku = this.Players.slice().sort((a, b) => a.Position - b.Position).map(p => p.Points);
+    for (let i = 0; i < this.Players.length; i++)
+      PointsBeforeRyuuKyoku.push(this.Players[i].Points);
     for (let player of this.Players) {
       let handCardsString = this.HandCardsToString(player.HandCards, player.ShowCards, '');
       let maj = new JapaneseMaj();
       let paixing = JapaneseMaj.getPaixingFromString(handCardsString);
       if (maj.calcXiangting(paixing).best.xiangTingCount == 0) player.TenPai = true;
     }
+
+    this.Rerender(true);
+
     let count = this.Players.filter(p => p.TenPai).length;
-    let PassOya = false
+    let PassOya = false;
     if (count == 0) PassOya = true;
     else if (count == 1) {
       for (let player of this.Players) {
@@ -1149,16 +1288,20 @@ const Game = function (code, host) {
       }
     }
     else if (count == 4) PassOya = false;
-    this.EmitToPlayers('showRyuukyokuResult', {
-      playerName1: this.Players[0].UserName,
-      playerName2: this.Players[1].UserName,
-      playerName3: this.Players[2].UserName,
-      playerName4: this.Players[3].UserName,
-      playerPointsChange1: this.Players[0].Points - PointsBeforeRyuukyoku[0],
-      playerPointsChange2: this.Players[1].Points - PointsBeforeRyuukyoku[1],
-      playerPointsChange3: this.Players[2].Points - PointsBeforeRyuukyoku[2],
-      playerPointsChange4: this.Players[3].Points - PointsBeforeRyuukyoku[3]
-    });
+
+    setTimeout(() => {
+      for (let player of this.Players) {
+        player.Emit('showRyuuKyokuResult', {
+          position: player.Position,
+          players: this.Players.map(p => ({
+            Position: p.Position,
+            UserName: p.UserName,
+            Points: PointsBeforeRyuuKyoku[p.Position],
+            PointsChange: p.Points - PointsBeforeRyuuKyoku[p.Position],
+          })),
+        });
+      }
+    }, 5000);
     setTimeout(() => {
       this.NextRound(PassOya, false);
     }, 8000);

@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Riichi Mahjong</title>
-  <link rel="icon" type="image/x-icon" href="Chun.ico">
-  <link rel="stylesheet" href="css/materialize.min.css">
-  <link rel="stylesheet" href="css/index.css">
-  <link rel="stylesheet" href="css/card.css">
-  <link rel="stylesheet" href="css/desk.css">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Riichi Mahjong</title>
+	<link rel="icon" type="image/x-icon" href="Chun.ico">
+	<link rel="stylesheet" href="css/materialize.min.css">
+	<link rel="stylesheet" href="css/index.css">
+	<link rel="stylesheet" href="css/card.css">
+	<link rel="stylesheet" href="css/desk.css">
 </head>
+
 <body>
-  <div id="mainContent">
+	<div id="mainContent">
 		<div class=" valign-wrapper row login-box">
 			<div class="col card hoverable s12 m4">
 				<form>
 					<div class="card-content">
-						<span class="card-title black-text">Riichi Mahjong - 08.01更新</span>
+						<span class="card-title black-text">Riichi Mahjong - 08.04更新</span>
 						<p>欢迎来到 Riichi Mahjong! 发起一场游戏, 其他人可以通过房间号加入.
 						</p>
 					</div>
@@ -33,26 +35,27 @@
 				</form>
 			</div>
 		</div>
-  </div>
+	</div>
 
-  <!--桌布/游戏区 -->
-  <div id="gameDiv" style="display:none">
-    <div class="game-header" style="position:absolute;top:16px;left:32px;z-index:10;padding:0;background:none;box-shadow:none;">
-      <span id="roomInfo" class="flow-text">房间号: <span id="roomCode"></span></span>
-    </div>
-    <div class="container" style="max-width:1000px;">
-      <div id="game-desk" class="desk mahjong-table">
-        <div class="center-cloth"></div>
-        <!-- 这里将来放麻将牌、玩家头像等 -->
-      </div>
-    </div>
-    <div class="game-footer center-align" style="padding: 24px 0 12px 0;">
-      <!-- 这里将来放操作按钮、状态提示等 -->
-      <div id="gameActions"></div>
-    </div>
-  </div>
+	<!--桌布/游戏区 -->
+	<div id="gameDiv" style="display:none">
+		<div class="game-header"
+			style="position:absolute;top:16px;left:32px;z-index:10;padding:0;background:none;box-shadow:none;">
+			<span id="roomInfo" class="flow-text">房间号: <span id="roomCode"></span></span>
+		</div>
+		<div class="container" style="max-width:1000px;">
+			<div id="game-desk" class="desk mahjong-table">
+				<div class="center-cloth"></div>
+				<!-- 这里将来放麻将牌、玩家头像等 -->
+			</div>
+		</div>
+		<div class="game-footer center-align" style="padding: 24px 0 12px 0;">
+			<!-- 这里将来放操作按钮、状态提示等 -->
+			<div id="gameActions"></div>
+		</div>
+	</div>
 
-  <div id="hostModal" class="modal">
+	<div id="hostModal" class="modal">
 		<div class="modal-content">
 			<h4>发起游戏</h4>
 			<div id="hostModalContent">
@@ -96,9 +99,10 @@
 		</div>
 	</div>
 
-  <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+	<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.5.0/socket.io.min.js"></script>
 	<script src="./main.js"> </script>
 	<script src="./js/materialize.min.js"></script>
 </body>
-</html> 
+
+</html>

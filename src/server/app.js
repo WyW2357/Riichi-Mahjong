@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
       let code;
       do {
         code = '' + // 确保生成字符串 
-              Math.floor(Math.random() * 10) + Math.floor(Math.random() * 10) + Math.floor(Math.random() * 10) + Math.floor(Math.random() * 10);
+          Math.floor(Math.random() * 10) + Math.floor(Math.random() * 10) + Math.floor(Math.random() * 10) + Math.floor(Math.random() * 10);
       } while (rooms.length != 0 && rooms.some((r) => r.GameCode == code));
       // 创建新游戏实例并添加到房间列表
       const game = new Game(code, data.Username);
@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
       game.AddPlayer(data.Username, socket);
       game.EmitToPlayers('hostRoom', {
         Code: code,
-        Players: game.Players.map((p) => {return p.UserName})
+        Players: game.Players.map((p) => { return p.UserName })
       });
     }
   });
@@ -53,12 +53,12 @@ io.on('connection', (socket) => {
         game.AddPlayer(data.Username, socket);
         game.EmitToPlayers('joinRoom', {
           Code: data.Code,
-          Players: game.Players.map((p) => {return p.UserName}),
+          Players: game.Players.map((p) => { return p.UserName }),
           ERROR: 0
         });
         game.EmitToPlayers('hostRoom', {
           Code: data.Code,
-          Players: game.Players.map((p) => {return p.UserName})
+          Players: game.Players.map((p) => { return p.UserName })
         });
         if (game.Players.length == 4) {
           // 进入游戏界面
@@ -78,10 +78,10 @@ io.on('connection', (socket) => {
     });
     if (game) {
       const player = game.FindPlayer(socket.id);
-      if(player.Status == 'WaitingCardOrAction' || player.Status == 'WaitingAction' || player.Status == 'WaitingTsumoOrKan'){
-      game.ActionList.push({Player: player, Action: data.Action});
-      player.Status = '';
-      game.ActionManager();
+      if (player.Status == 'WaitingCardOrAction' || player.Status == 'WaitingAction' || player.Status == 'WaitingTsumoOrKan') {
+        game.ActionList.push({ Player: player, Action: data.Action });
+        player.Status = '';
+        game.ActionManager();
       }
     }
   });
@@ -94,21 +94,19 @@ io.on('connection', (socket) => {
     });
     if (game) {
       const player = game.FindPlayer(socket.id);
-      if(player.Status == 'WaitingCard' || player.Status == 'WaitingCardOrAction'){
+      if (player.Status == 'WaitingCard' || player.Status == 'WaitingCardOrAction') {
         player.Status = '';
         game.PutOut(player, data.Card, data.Type);
       }
-      else if(player.Status == 'WaitingTsumoOrKan' && data.Type == 'draw'){
-          player.Status = '';
-          player.IsYiFa = false;
-          game.PutOut(player, data.Card, data.Type);
+      else if (player.Status == 'WaitingTsumoOrKan' && data.Type == 'draw') {
+        player.Status = '';
+        player.IsYiFa = false;
+        game.PutOut(player, data.Card, data.Type);
       }
-      else if(player.Status == 'WaitingRiichi'){
+      else if (player.Status == 'WaitingRiichi') {
         player.Status = '';
         player.IsRiichi = true;
         player.IsYiFa = true;
-        player.Points -= 1000;
-        game.RiichiBang += 1;
         player.IsDoubleRiichi = game.Players.every(p => p.ShowCards.length == 0) && player.HistoryCards.length == 0;
         game.PutOut(player, data.Card, data.Type);
       }
@@ -153,7 +151,7 @@ io.on('connection', (socket) => {
   });
 });
 
-  
+
 
 // 启动服务器
 server.listen(PORT, () => console.log(`正在端口 ${PORT} 运行`));
