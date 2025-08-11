@@ -2,9 +2,9 @@
 const JapaneseMaj = require("./js/japanesemaj.min.js");
 var maj = new JapaneseMaj({
     changFeng: 1, // Number类型，东风场为1，南风场为2，西风场为3，北风场为4
-	ziFeng: 1, // Number类型，自风，东1南2西3北4
-	dora: [JapaneseMaj.getPai("Wanzi", 6)], //Array[Pai]类型，宝牌数组，注意这里是宝牌数组不是宝牌指示牌数组
-	lidora: [JapaneseMaj.getPai("Wanzi", 1)], //Array[Pai]类型，里宝牌数组，注意这里是里宝牌数组不是里宝牌指示牌数组
+    ziFeng: 1, // Number类型，自风，东1南2西3北4
+    dora: [JapaneseMaj.getPai("Wanzi", 6)], //Array[Pai]类型，宝牌数组，注意这里是宝牌数组不是宝牌指示牌数组
+    lidora: [JapaneseMaj.getPai("Wanzi", 1)], //Array[Pai]类型，里宝牌数组，注意这里是里宝牌数组不是里宝牌指示牌数组
     isLiangLiZhi: false, //是否两立直
     isLiZhi: false, //是否立直
     isYiFa: false, //是否一发
@@ -21,7 +21,7 @@ var maj = new JapaneseMaj({
     isLianFeng2Fu: false //连风牌雀头是否2符
 });
 // [JapaneseMaj.getPai("Tongzi", 2)]
-var paixing = JapaneseMaj.getPaixingFromString('1p1p2p2p3p3p4p4p1z2z 5055m');//"1p2p3p4p0p6p7p8p9p6p6p 22222s"
+var paixing = JapaneseMaj.getPaixingFromString('1p1p2p2p3p3p4p4p1s2s 55555m');//"1p2p3p4p0p6p7p8p9p6p6p 22222s"
 var res = maj.getYakuCalculator(paixing);
 if (res) {
     let pointRes = res.calcYaku(maj.state);
@@ -39,7 +39,7 @@ if (res) {
 }
 // var res = maj.calcXiangting(paixing);
 // console.log(res);
- console.log(maj.calcXiangting(paixing).best.xiangTingCount);
+console.log(maj.calcXiangting(paixing).best.xiangTingCount);
 // console.log(res.best.divideResult.map(x => x.serialize()));
 // type：牌的种类，"Wanzi"为万子，"Tongzi"为筒子，"Suozi"为索子，"Feng"为风牌，"Sanyuan"为三元牌
 // pai_ascii：牌的数字，如果是风牌那么东1南2西3北4，如果是三元牌那么白1发2中3

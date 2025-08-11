@@ -6,7 +6,7 @@ const path = require('path');              // 引入路径处理模块
 const JapaneseMaj = require("../client/js/japanesemaj.min.js");
 
 const Game = function (code, host) {
-  this.Deck = new Deck();         // 创建新的牌组实例
+  this.Deck = new Deck(washizu = true);         // 创建新的牌组实例
   this.Host = host;               // 房主 socketid
   this.Players = [];              // 存储当前游戏中的玩家
   this.GameCode = code;           // 游戏房间名称
@@ -207,12 +207,10 @@ const Game = function (code, host) {
   this.DealCards = () => {
     this.Deck.Shuffle();
     for (let player of this.Players) {
-      // if (true) {
-      //   player.HandCards = [{ Value: 2, Type: 'm' }, { Value: 3, Type: 'm' }, { Value: 4, Type: 'm' },
-      //   { Value: 0, Type: 'm' }, { Value: 6, Type: 'm' }, { Value: 7, Type: 'p' },
-      //   { Value: 7, Type: 'p' }, { Value: 7, Type: 's' }, { Value: 8, Type: 's' },
-      //   { Value: 9, Type: 's' }, { Value: 2, Type: 'p' }, { Value: 3, Type: 'p' }, { Value: 4, Type: 'p' }];
-      // }
+      // player.HandCards = [{ Value: 2, Type: 'm' }, { Value: 3, Type: 'm' }, { Value: 4, Type: 'm' },
+      // { Value: 0, Type: 'm' }, { Value: 6, Type: 'm' }, { Value: 7, Type: 'm' },
+      // { Value: 7, Type: 'p' }, { Value: 8, Type: 'p' }, { Value: 9, Type: 'p' },
+      // { Value: 7, Type: 's' }, { Value: 7, Type: 's' }, { Value: 6, Type: 's' }, { Value: 7, Type: 's' }];
       for (let i = 0; i < 13; i++) player.AddCard(this.Deck.DealRandomCard());
       player.SortHandCards();
 
@@ -548,7 +546,19 @@ const Game = function (code, host) {
         }
         if (count !== 3) return false;
         // 开杠前后不能改变听牌
-
+        let handWithoutKan = theplayer.HandCards.filter(c => !equalCard(KanCard, c));
+        let showCardsAfterKan = theplayer.ShowCards.slice().push({
+          Type: 'Ankan',
+          Cards: [KanCard, KanCard, KanCard, KanCard],
+        });
+        let newHandCardsString = this.HandCardsToString(handWithoutKan, showCardsAfterKan);
+        let newPaixing = JapaneseMaj.getPaixingFromString(newHandCardsString);
+        let Maj = new JapaneseMaj();
+        let newResults = Maj.calcXiangting(newPaixing);
+        if (newResults.best.xiangTingCount !== 0) return false;
+        let newMachiHaiLength = newResults.best.divideResult.length;
+        if (newMachiHaiLength !== theplayer.MachiHai.length) return false;
+        else return true;
       }
       else {
         for (let type in typeMap) {

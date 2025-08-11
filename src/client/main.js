@@ -70,7 +70,7 @@ var JoinRoom = function () {
 // 重新渲染游戏界面，更新所有玩家的状态
 function GetCardImgSrc(card) {
   if (!card) return '';
-  return 'img/' + card.Value + card.Type + '.svg';
+  return 'img/' + card.Value + card.Type + (card.Transparent ? "-t" : "") + '.svg';
 }
 
 const positions = {
@@ -187,6 +187,11 @@ socket.on('rerender', function (data) {
       }
     }
 
+    // 将非流局情况的其他家手牌顺序调整为透明牌在前，非透明牌在后
+    if (!data.IsRyuuKyoku && dir !== 'east') {
+      player.HandCards = player.HandCards.filter(c => c.Transparent).concat(player.HandCards.filter(c => !c.Transparent));
+    }
+
     // 渲染手牌（局中与流局两种情况）
     for (let idx = 0; idx < player.HandCards.length; idx++) {
       let card = player.HandCards[idx];
@@ -200,7 +205,13 @@ socket.on('rerender', function (data) {
             + cardImg + '</span>');
         }
         else {
-          tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
+          // 若为透明牌则显示
+          if (card.Transparent) {
+            let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
+            tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '">' + cardImg + '</span>');
+          }
+          else
+            tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
         }
       }
       else {
@@ -225,7 +236,12 @@ socket.on('rerender', function (data) {
           + ' data-card-type="draw" data-card-index="13">'
           + cardImg + '</span>');
       } else {
-        tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
+        if (player.DrawCard.Transparent) {
+          let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(player.DrawCard) + '">';
+          tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '">' + cardImg + '</span>');
+        }
+        else
+          tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"><img class="mj-back" src="img/Back.svg"></span>');
       }
       leftBound += 38;
     }
