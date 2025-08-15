@@ -44,6 +44,16 @@
   transform: rotate(90deg);
 }
 
+.disabled-mask {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(100, 100, 100, 0.4);
+  border-radius: 4px;
+  z-index: 300;
+
+}
+
 /* 可选中牌的样式 */
 .selectable-card {
   transition: all 0.2s ease;
@@ -51,15 +61,15 @@
 }
 
 .selectable-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-8px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .selectable-card.selected {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(255, 224, 102, 0.6);
+  transform: translateY(-8px);
+  /* box-shadow: 0 6px 12px rgba(255, 224, 102, 0.6);
   border: 2px solid #ffe066;
-  border-radius: 4px;
+  border-radius: 4px; */
 }
 
 /* 行内flex布局辅助 */

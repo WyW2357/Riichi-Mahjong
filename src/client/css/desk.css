@@ -237,6 +237,28 @@ html {
   transform: rotate(90deg);
 }
 
+#gameDiv .game-action-btn-select {
+  position: absolute;
+  width: 75px;
+  height: 45px;
+  z-index: 200;
+  cursor: pointer;
+  background: #ffe066;
+  border: 1px solid gray;
+  border-radius: 2px;
+}
+
+#gameDiv .game-action-btn-select span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6.8px;
+}
+
+#gameDiv .game-action-btn-select span img {
+  width: 20px;
+}
+
 .game-modal {
   display: block;
   position: fixed;

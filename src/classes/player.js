@@ -22,6 +22,7 @@ const Player = function (playername, socket) {
     temporary: false,
     riichi: false,
   };
+  this.DisabledCards = []; // 禁止打出的牌
 
   //摸牌
   this.AddCard = (card) => {
@@ -34,13 +35,14 @@ const Player = function (playername, socket) {
       const typeOrder = { 'm': 0, 'p': 1, 's': 2, 'z': 3 };
       const aType = typeOrder[a.Type];
       const bType = typeOrder[b.Type];
-      if (aType !== bType) {
+      if (aType !== bType)
         return aType - bType;
-      }
       // 红宝牌（value=0）视为5.5
       const aValue = a.Value === 0 ? 5.5 : a.Value;
       const bValue = b.Value === 0 ? 5.5 : b.Value;
-      return aValue - bValue;
+      if (aValue !== bValue)
+        return aValue - bValue;
+      return a.Transparent - b.Transparent; // 透明牌在后
     });
   };
 
@@ -52,7 +54,7 @@ const Player = function (playername, socket) {
   // 移除一张牌
   this.RemoveCard = (card) => {
     for (let i = 0; i < this.HandCards.length; i++) {
-      if (this.HandCards[i].Type === card.Type && this.HandCards[i].Value === card.Value) {
+      if (this.HandCards[i].Type === card.Type && this.HandCards[i].Value === card.Value && this.HandCards[i].Transparent === card.Transparent) {
         this.HandCards.splice(i, 1);
         return;
       }

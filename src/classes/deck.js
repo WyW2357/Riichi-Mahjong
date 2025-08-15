@@ -2,6 +2,7 @@ const Card = require('./card');
 
 const Deck = function (washizu = false) {
   this.Cards = [];
+  this.washizu = washizu;
 
   //创建136张初始手牌
   this.Shuffle = () => {
@@ -10,7 +11,7 @@ const Deck = function (washizu = false) {
       for (let v = 1; v <= 9; v++) {
         if (i !== 4) {
           if (i === 1 && v === 5)
-            if (washizu) {
+            if (this.washizu) {
               this.Cards.push(new Card(0, 'm', true));
               this.Cards.push(new Card(0, 'p', true));
               this.Cards.push(new Card(0, 's', true));
@@ -20,7 +21,7 @@ const Deck = function (washizu = false) {
               this.Cards.push(new Card(0, 'p'));
               this.Cards.push(new Card(0, 's'));
             }
-          else if (washizu) {
+          else if (this.washizu) {
             this.Cards.push(new Card(v, 'm', true));
             this.Cards.push(new Card(v, 'p', true));
             this.Cards.push(new Card(v, 's', true));
@@ -40,7 +41,7 @@ const Deck = function (washizu = false) {
     }
     for (let i = 1; i <= 4; i++) {
       for (let v = 1; v <= 7; v++) {
-        if (i !== 4 && washizu)
+        if (i !== 4 && this.washizu)
           this.Cards.push(new Card(v, 'z', true));
         else
           this.Cards.push(new Card(v, 'z'));

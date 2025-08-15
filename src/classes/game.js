@@ -4,6 +4,7 @@ const Player = require('./player');        // 引入玩家类
 const fs = require('fs');                  // 引入文件系统模块
 const path = require('path');              // 引入路径处理模块
 const JapaneseMaj = require("../client/js/japanesemaj.min.js");
+const { get } = require('http');
 
 const Game = function (code, host) {
   this.Deck = new Deck(washizu = true);         // 创建新的牌组实例
@@ -109,6 +110,7 @@ const Game = function (code, host) {
         temporary: false,
         riichi: false,
       };
+      player.DisabledCards = [];
     }
     this.DealCards();
     this.RestCardsNum = 70;
@@ -177,6 +179,7 @@ const Game = function (code, host) {
     }
     this.LastRiverCard = { Card: card, Player: theplayer };
     theplayer.Furiten.temporary = false;  // 解除同巡振听
+    theplayer.DisabledCards = [];      // 清空禁止打出的牌
     this.PutOutCheck(theplayer);
     if (this.Stop) {
       for (let player of this.Players) {
@@ -249,6 +252,7 @@ const Game = function (code, host) {
         })),
         Position: player.Position,
         IsFuriten: player.CheckFuriten(),
+        DisabledCards: player.DisabledCards,
         IsRyuuKyoku: IsRyuuKyoku || false,
         ActivePlayer: this.ActivePlayer,
         StageNum: this.StageNum,
@@ -277,6 +281,7 @@ const Game = function (code, host) {
     this.Log('PutOutCheck');
     // 检查当前玩家的待牌与舍牌振听状态
     let HandCardsString = this.HandCardsToString(theplayer.HandCards, theplayer.ShowCards);
+    console.log(`${theplayer.UserName} HandCards: ${HandCardsString}`);
     let paixing = JapaneseMaj.getPaixingFromString(HandCardsString);
     let maj = new JapaneseMaj();
     let results = maj.calcXiangting(paixing);
@@ -340,18 +345,63 @@ const Game = function (code, host) {
 
     // 只取同花色
     const hand = theplayer.HandCards.filter(c => c.Type === card.Type);
+    // // 0视为5
+    // const getValue = c => (c.Value === 0 ? 5 : c.Value);
+    // const values = hand.map(getValue);
+    // // 桌面打出的牌也视为5
+    // const cardValue = card.Value === 0 ? 5 : card.Value;
+
+    // // 右吃
+    // if (values.filter(v => v === cardValue - 2).length > 0 && values.filter(v => v === cardValue - 1).length > 0) return true;
+    // // 中吃
+    // if (values.filter(v => v === cardValue - 1).length > 0 && values.filter(v => v === cardValue + 1).length > 0) return true;
+    // // 左吃
+    // if (values.filter(v => v === cardValue + 1).length > 0 && values.filter(v => v === cardValue + 2).length > 0) return true;
+    // return false;
+    // 对手牌去重
+    const uniqueHand = hand.filter((c, index, self) =>
+      index === self.findIndex(t =>
+        t.Value === c.Value && t.Type === c.Type && t.Transparent === c.Transparent));
     // 0视为5
     const getValue = c => (c.Value === 0 ? 5 : c.Value);
-    const values = hand.map(getValue);
     // 桌面打出的牌也视为5
-    const cardValue = card.Value === 0 ? 5 : card.Value;
-
-    // 右吃
-    if (values.filter(v => v === cardValue - 2).length > 0 && values.filter(v => v === cardValue - 1).length > 0) return true;
-    // 中吃
-    if (values.filter(v => v === cardValue - 1).length > 0 && values.filter(v => v === cardValue + 1).length > 0) return true;
-    // 左吃
-    if (values.filter(v => v === cardValue + 1).length > 0 && values.filter(v => v === cardValue + 2).length > 0) return true;
+    const cardValue = getValue(this.LastRiverCard.Card);
+    // 遍历每两种手牌组合
+    for (let i = 0; i < uniqueHand.length; i++) {
+      for (let j = i + 1; j < uniqueHand.length; j++) {
+        let card1 = uniqueHand[i];
+        let card2 = uniqueHand[j];
+        // 判断该手牌组合是否可以吃打出的牌
+        // 取出三张牌的值并排序，判断是否为连续的三个数
+        let values = [getValue(card1), getValue(card2), cardValue].sort((a, b) => a - b);
+        if (values[1] - values[0] === 1 && values[2] - values[1] === 1) {
+          // 检查吃牌后是否还存在能打出的牌
+          let tempHand = [...theplayer.HandCards];
+          let disableCards = [];
+          for (let i = 1; i <= 9; i++) {
+            let newValues = [getValue(card1), getValue(card2), i].sort((a, b) => a - b);
+            if (newValues[1] - newValues[0] === 1 && newValues[2] - newValues[1] === 1) {
+              disableCards.push(new Card(i, card.Type));
+            }
+          }
+          // 去除吃牌需要的牌和不能打出的牌
+          for (let i = 0; i < tempHand.length; i++) {
+            if (tempHand[i].Type === card1.Type && tempHand[i].Value === card1.Value && tempHand[i].Transparent === card1.Transparent) {
+              tempHand.splice(i, 1);
+              break;
+            }
+          }
+          for (let i = 0; i < tempHand.length; i++) {
+            if (tempHand[i].Type === card2.Type && tempHand[i].Value === card2.Value && tempHand[i].Transparent === card2.Transparent) {
+              tempHand.splice(i, 1);
+              break;
+            }
+          }
+          tempHand = tempHand.filter(c => !disableCards.some(dc => getValue(dc) === getValue(c) && dc.Type === c.Type));
+          if (tempHand.length > 0) return true;
+        }
+      }
+    }
     return false;
   };
 
@@ -359,53 +409,30 @@ const Game = function (code, host) {
   this.ChiSelect = (theplayer) => {
     // 只取同花色
     const hand = theplayer.HandCards.filter(c => c.Type === this.LastRiverCard.Card.Type);
+    // 对手牌去重
+    const uniqueHand = hand.filter((c, index, self) =>
+      index === self.findIndex(t =>
+        t.Value === c.Value && t.Type === c.Type && t.Transparent === c.Transparent));
     // 0视为5
     const getValue = c => (c.Value === 0 ? 5 : c.Value);
     // 桌面打出的牌也视为5
-    const cardValue = (this.LastRiverCard.Card.Value === 0 ? 5 : this.LastRiverCard.Card.Value);
+    const cardValue = getValue(this.LastRiverCard.Card);
 
     let options = [];
 
-    // 右吃：cardValue-2, cardValue-1, card
-    let right1 = hand.filter(c => getValue(c) === cardValue - 2);
-    let right2 = hand.filter(c => getValue(c) === cardValue - 1);
-    if (right1.length && right2.length) {
-      right1.forEach(c1 => {
-        right2.forEach(c2 => {
-          if (c1 !== c2) options.push([c1, c2]);
-        });
-      });
+    // 遍历每两种手牌组合
+    for (let i = 0; i < uniqueHand.length; i++) {
+      for (let j = i + 1; j < uniqueHand.length; j++) {
+        let card1 = uniqueHand[i];
+        let card2 = uniqueHand[j];
+        // 判断该手牌组合是否可以吃打出的牌
+        // 取出三张牌的值并排序，判断是否为连续的三个数
+        let values = [getValue(card1), getValue(card2), cardValue].sort((a, b) => a - b);
+        if (values[1] - values[0] === 1 && values[2] - values[1] === 1) {
+          options.push([card1, card2]);
+        }
+      }
     }
-
-    // 中吃：cardValue-1, card, cardValue+1
-    let mid1 = hand.filter(c => getValue(c) === cardValue - 1);
-    let mid2 = hand.filter(c => getValue(c) === cardValue + 1);
-    if (mid1.length && mid2.length) {
-      mid1.forEach(c1 => {
-        mid2.forEach(c2 => {
-          if (c1 !== c2) options.push([c1, c2]);
-        });
-      });
-    }
-
-    // 左吃：card, cardValue+1, cardValue+2
-    let left1 = hand.filter(c => getValue(c) === cardValue + 1);
-    let left2 = hand.filter(c => getValue(c) === cardValue + 2);
-    if (left1.length && left2.length) {
-      left1.forEach(c1 => {
-        left2.forEach(c2 => {
-          if (c1 !== c2) options.push([c1, c2]);
-        });
-      });
-    }
-
-    // 去重（防止同一组出现多次，按类型+实际值去重）
-    options = options.filter((arr, idx, self) =>
-      idx === self.findIndex(a =>
-        a[0].Type === arr[0].Type && a[0].Value === arr[0].Value &&
-        a[1].Type === arr[1].Type && a[1].Value === arr[1].Value
-      )
-    );
 
     if (options.length > 1) {
       theplayer.Status = 'WaitingSelect';
@@ -438,6 +465,13 @@ const Game = function (code, host) {
       player.IsYiFa = false;
     }
     theplayer.Status = 'WaitingCard';
+    const getValue = c => (c.Value === 0 ? 5 : c.Value);
+    for (let i = 1; i <= 9; i++) {
+      let values = [getValue(chiCard1), getValue(chiCard2), i].sort((a, b) => a - b);
+      if (values[1] - values[0] === 1 && values[2] - values[1] === 1) {
+        theplayer.DisabledCards.push(new Card(i, card.Type));
+      }
+    }
     this.Rerender();
   };
 
@@ -460,23 +494,36 @@ const Game = function (code, host) {
   // 碰选择
   this.PonSelect = (theplayer) => {
     const card = this.LastRiverCard.Card;
-    let count = 0;
-    let count0 = 0;
-    for (let c of theplayer.HandCards) {
-      if (c.Type === card.Type && ((c.Value === 0) || (c.Value === 5))) count++;
-      if (c.Type === card.Type && c.Value === 0) count0++;
+    // 0视为5
+    const getValue = c => (c.Value === 0 ? 5 : c.Value);
+    // 桌面打出的牌也视为5
+    const cardValue = getValue(card);
+    // 只取同花色和同数字
+    const hand = theplayer.HandCards.filter(c => c.Type === card.Type && getValue(c) === cardValue);
+
+    let options = [];
+
+    // 遍历每两种手牌组合
+    for (let i = 0; i < hand.length; i++) {
+      for (let j = i + 1; j < hand.length; j++) {
+        let card1 = hand[i];
+        let card2 = hand[j];
+        options.push([card1, card2]);
+      }
     }
-    if (card.Value == 5 && count == 3) {
+
+    // 对选项去重
+    options = options.filter((option, index, self) =>
+      index === self.findIndex(t =>
+        t[0].Value === option[0].Value && t[0].Type === option[0].Type && t[0].Transparent === option[0].Transparent &&
+        t[1].Value === option[1].Value && t[1].Type === option[1].Type && t[1].Transparent === option[1].Transparent));
+
+    if (options.length > 1) {
       theplayer.Status = 'WaitingSelect';
-      theplayer.Options = [
-        [{ Value: 5, Type: card.Type }, { Value: 5, Type: card.Type }], // 55碰5
-        [{ Value: 5, Type: card.Type }, { Value: 0, Type: card.Type }]  // 50碰5
-      ];
+      theplayer.Options = options;
       this.Rerender();
     }
-    else if (card.Value == 0) this.Pon(theplayer, { Value: 5, Type: card.Type }, { Value: 5, Type: card.Type });
-    else if (card.Value == 5 && count0 == 1 && count == 2) this.Pon(theplayer, { Value: 0, Type: card.Type }, { Value: 5, Type: card.Type });
-    else this.Pon(theplayer, card, card);
+    else if (options.length === 1) this.Pon(theplayer, options[0][0], options[0][1]);
   }
 
   // 碰
@@ -515,6 +562,8 @@ const Game = function (code, host) {
       player.IsYiFa = false;
     }
     theplayer.Status = 'WaitingCard';
+    const getValue = c => (c.Value === 0 ? 5 : c.Value);
+    theplayer.DisabledCards.push(new Card(getValue(poncard1), card.Type));
     this.Rerender();
   };
 
@@ -1206,9 +1255,22 @@ const Game = function (code, host) {
       if (!theplayer.DrawCard) this.MinKanSelect(theplayer);
       else this.AnKanOrKakanSelect(theplayer);
     }
-    if (Action == 'Riichi') theplayer.Status = 'WaitingRiichi';
+    if (Action == 'Riichi') {
+      theplayer.Status = 'WaitingRiichi';
+      // 标记玩家无法打出的牌
+      const getValue = (card) => card.Value === 0 ? 5 : card.Value;
+      let handCardsString = this.HandCardsToString(theplayer.HandCards, theplayer.ShowCards, theplayer.DrawCard);
+      let maj = new JapaneseMaj();
+      let paixing = JapaneseMaj.getPaixingFromString(handCardsString);
+      let ableCards = maj.calcXiangting(paixing).best.divideResult.map(c => new Card(Number(c.serialize()[0]), c.serialize()[1]));
+      for (let card of theplayer.HandCards) {
+        if (!ableCards.some(c => c.Type === card.Type && getValue(c) === getValue(card)))
+          theplayer.DisabledCards.push(card);
+      }
+    }
     if (Action == 'Ron') this.Ron(theplayer, this.KanBreak.Is);
     if (Action == 'Tsumo') this.Tsumo(theplayer, theplayer.IsLingShang);
+    this.Rerender();
   }
 
   // 处理立直成功
@@ -1314,7 +1376,7 @@ const Game = function (code, host) {
     }, 5000);
     setTimeout(() => {
       this.NextRound(PassOya, false);
-    }, 8000);
+    }, 5000);
   }
 
   // 终局

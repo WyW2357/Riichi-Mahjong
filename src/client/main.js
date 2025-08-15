@@ -76,7 +76,7 @@ function GetCardImgSrc(card) {
 const positions = {
   east: {
     // 新增按钮区（第四行）
-    buttonRow: Array.from({ length: 5 }, (_, i) => ({
+    buttonRow: Array.from({ length: 8 }, (_, i) => ({
       left: 328 + i * 80 + 80,
       top: 616 + 156
     }))
@@ -200,9 +200,14 @@ socket.on('rerender', function (data) {
         // 局中时只显示自己手牌
         if (dir === 'east') {
           let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-          tileContainer.append('<span class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '"'
-            + ' data-card-index="' + idx + '" data-card-type="hand">'
-            + cardImg + '</span>');
+          const getValue = c => (c.Value === 0 ? 5 : c.Value);
+          if (data.DisabledCards && data.DisabledCards.some(c => c.Type === card.Type && getValue(c) === getValue(card)))
+            // 如果是被禁止打出的牌，则添加灰色遮罩
+            tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"'
+              + ' data-card-index="' + idx + '" data-card-type="hand">' + cardImg + '<div class="disabled-mask"></div></span>');
+          else
+            tileContainer.append('<span class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '"'
+              + ' data-card-index="' + idx + '" data-card-type="hand">' + cardImg + '</span>');
         }
         else {
           // 若为透明牌则显示
@@ -300,20 +305,20 @@ socket.on('rerender', function (data) {
         players[0].Options.forEach(function (cardGroup, idx) {
           const pos = positions.east.buttonRow[idx];
           if (!pos) return;
-          let label = '';
+          const posStyle = 'left:' + pos.left + 'px;top:' + pos.top + 'px;';
+          let innerHtml = '<span>';
           if (cardGroup.length === 1) {
-            label += cardGroup[0].Value + cardGroup[0].Type;
-            label += '杠';
+            innerHtml += '<img src="' + GetCardImgSrc(cardGroup[0]) + '">'
+            innerHtml += '杠';
           }
           else if (cardGroup.length === 2) {
-            label += cardGroup.map(c => (c.Value === 0 ? '0' : c.Value) + c.Type).join('');
-            if (isSameCard(cardGroup[0], cardGroup[1])) label += '碰';
-            else label += '吃';
+            innerHtml += cardGroup.map(c => '<img src="' + GetCardImgSrc(c) + '">').join('');
+            if (isSameCard(cardGroup[0], cardGroup[1])) innerHtml += '碰';
+            else innerHtml += '吃';
           }
           $('#gameDiv').append(
-            '<button class="game-action-btn-select" data-idx="' + idx + '"'
-            + ' style="position:absolute;left:' + pos.left + 'px;top:' + pos.top + 'px;width:60px;height:45px;z-index:200;cursor:pointer;">'
-            + label + '</button>'
+            '<button class="game-action-btn-select" data-idx="' + idx + '"' + ' style="' + posStyle + '">'
+            + innerHtml + '</button>'
           );
         });
       } else {
@@ -561,12 +566,12 @@ const showWinResult = (data, isTsumo) => {
   // 渲染玩家点数板
   $('.points-board').html(renderPointsBoard(data));
 
-  // 8秒后自动关闭
+  // 10秒后自动关闭
   setTimeout(() => {
     $(`#${modalId}`).fadeOut(500, function () {
       $(this).remove();
     });
-  }, 8000);
+  }, 10000);
 };
 
 // 处理荣和结果显示
