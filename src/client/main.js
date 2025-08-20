@@ -6,6 +6,9 @@ $(document).ready(function () {
   $('.modal-trigger').leanModal();
   // 初始化工具提示功能，设置延迟时间为50毫秒，当鼠标悬停在带有 tooltipped 类的元素上时，会显示提示信息
   $('.tooltipped').tooltip({ delay: 50 });
+
+  // 初始化gameDiv桌面部分
+  $('#gameDiv').html('<div class="main-content"></div>');
   // 预加载所有图片资源，确保游戏运行时不会出现图片加载延迟
   const images = [
     'img/Back.svg', 'img/RiichiBou.svg', 'img/Chi.svg', 'img/Pon.svg', 'img/Kan.svg',
@@ -40,32 +43,32 @@ $(document).ready(function () {
     img.src = src;
   });
 
-  // // 预加载音效文件
-  // const sounds = [
-  //   'sounds/Chi.mp3', 'sounds/Pon.mp3', 'sounds/Kan.mp3',
-  //   'sounds/Riichi.mp3', 'sounds/Ron.mp3', 'sounds/Tsumo.mp3',
-  // ]
-  // window.gameSounds = {};
-  // sounds.forEach(function (src) {
-  //   const audio = new Audio(src);
-  //   audio.preload = 'auto';
-  //   const audioName = src.split('/').pop().split('.')[0];
-  //   window.gameSounds[audioName] = audio;
-  // });
+  // 预加载音效文件
+  const sounds = [
+    'sounds/Chi.mp3', 'sounds/Pon.mp3', 'sounds/Kan.mp3',
+    'sounds/Riichi.mp3', 'sounds/Ron.mp3', 'sounds/Tsumo.mp3',
+  ]
+  window.gameSounds = {};
+  sounds.forEach(function (src) {
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    const audioName = src.split('/').pop().split('.')[0];
+    window.gameSounds[audioName] = audio;
+  });
 
-  // // 添加音效开关按钮
-  // $('#gameDiv').append('<button id="soundToggle" class="sound-toggle-btn">🔊</button>');
-  // localStorage.setItem('soundEnabled', false); // 默认音效关闭
+  // 添加音效开关按钮
+  $('#gameDiv').append('<button id="soundToggle" class="sound-toggle-btn">🔊</button>');
+  localStorage.setItem('soundEnabled', false); // 默认音效关闭
 
-  // $('#soundToggle').on('click', function () {
-  //   const isSoundEnabled = localStorage.getItem('soundEnabled');
-  //   localStorage.setItem('soundEnabled', !isSoundEnabled);
-  //   $(this).text(isSoundEnabled ? '🔇' : '🔊');
-  // });
+  $('#soundToggle').on('click', function () {
+    const isSoundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+    localStorage.setItem('soundEnabled', !isSoundEnabled);
+    $(this).text(isSoundEnabled ? '🔇' : '🔊');
+  });
 
-  // // 初始化按钮状态
-  // const isSoundEnabled = localStorage.getItem('soundEnabled');
-  // $('#soundToggle').text(isSoundEnabled ? '🔊' : '🔇');
+  // 初始化按钮状态
+  const isSoundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+  $('#soundToggle').text(isSoundEnabled ? '🔊' : '🔇');
 });
 
 var socket = io();
@@ -144,10 +147,11 @@ const positions = {
 };
 
 socket.on('rerender', function (data) {
-  $('#gameDiv').html(''); // 清空桌面
+  const mainContent = $('#gameDiv .main-content');
+  mainContent.html(''); // 清空桌面
 
   // 渲染牌桌中心部分
-  $('#gameDiv').append('<div class="main-board"></div>')
+  mainContent.append('<div class="main-board"></div>')
   // 渲染牌山（MainCards）
   // var mainRows = [];
   // var row = data.MainCards.slice().map(function (card) {
@@ -165,7 +169,7 @@ socket.on('rerender', function (data) {
       mainCardsHtml += '<span class="mj-card"><img class="mj-front" src="' + GetCardImgSrc(data.MainCards[i]) + '"></span>';
     else mainCardsHtml += '<span class="mj-card"><img class="mj-back" src="img/Back.svg"></span>';
   }
-  $('#gameDiv').append('<div id="maincards" class="main-cards">' + mainCardsHtml + '</div>');
+  mainContent.append('<div id="maincards" class="main-cards">' + mainCardsHtml + '</div>');
 
   // 牌山下方只显示局数、本场
   var stageStr = '';
@@ -173,16 +177,16 @@ socket.on('rerender', function (data) {
   else if (data.StageNum <= 8) stageStr = '南' + (data.StageNum - 4) + '局';
   var roundStr = data.RoundNum !== undefined ? (data.RoundNum + '本场') : '';
   var infoHtml = '<div class="text">' + stageStr + ' ' + roundStr + '</div>';
-  $('#gameDiv').append('<div id="tableinfo" class="table-info">' + infoHtml + '</div>');
+  mainContent.append('<div id="tableinfo" class="table-info">' + infoHtml + '</div>');
 
   // 牌山下方50px处显示余牌数
   if (typeof data.RestCardsNum === 'number') {
-    $('#gameDiv').append('<div id="restcards-info" class="rest-cards-info">余 ' + data.RestCardsNum + '</div>');
+    mainContent.append('<div id="restcards-info" class="rest-cards-info">余 ' + data.RestCardsNum + '</div>');
   }
 
   // 牌山上方显示立直棒图标+数量（0也显示）
   if (typeof data.RiichiBang !== 'undefined') {
-    $('#gameDiv').append('<div id="riichibou-info" class="riichibou-info">'
+    mainContent.append('<div id="riichibou-info" class="riichibou-info">'
       + '<img src="img/RiichiBou.svg" class="riichibou-img">'
       + '<span style="margin-left:6px;">× ' + data.RiichiBang + '</span>'
       + '</div>');
@@ -197,12 +201,12 @@ socket.on('rerender', function (data) {
     const className = classNames[i];
     const activeStyle = (windIdx === data.ActivePlayer) ? ' style="background-color:#ffe066;' : ' style="background-color:#fff3;';
     const redStyle = (windIdx === 0) ? ' color:#d22;' : '';
-    $('#gameDiv').append('<span class="wind-label ' + className + '"' + activeStyle + redStyle + '">' + wind + '</span>');
+    mainContent.append('<span class="wind-label ' + className + '"' + activeStyle + redStyle + '">' + wind + '</span>');
   }
 
   // 自己的振听标记
   if (data.IsFuriten) {
-    $('#gameDiv').append('<span class="furiten-mark">振听</span>');
+    mainContent.append('<span class="furiten-mark">振听</span>');
   }
 
   // 以自己为下方旋转Players数组
@@ -213,13 +217,13 @@ socket.on('rerender', function (data) {
     var dir = pos2dir[idx]; // idx=0:自己, 1:下家, 2:对家, 3:上家
     // 渲染立直棒
     if (player.IsRiichi && player.RiichiProcessed) {
-      $('#gameDiv').append('<img src="img/RiichiBou.svg" class="riichibou ' + dir + '">');
+      mainContent.append('<img src="img/RiichiBou.svg" class="riichibou ' + dir + '">');
     }
     // 渲染点数
-    $('#gameDiv').append('<div class="points ' + dir + '">' + player.Points + '</div>');
+    mainContent.append('<div class="points ' + dir + '">' + player.Points + '</div>');
 
     // 创建tile-container
-    $('#gameDiv').append('<div class="tile-container ' + dir + '"></div>');
+    mainContent.append('<div class="tile-container ' + dir + '"></div>');
     let tileContainer = $('#gameDiv .tile-container.' + dir);
     let leftBound = 120, rightBound = 882, houLeftBound = 332;
     let upperBound = 830, houUpperBound = 608;
@@ -380,7 +384,7 @@ socket.on('rerender', function (data) {
             if (isSameCard(cardGroup[0], cardGroup[1])) innerHtml += '碰';
             else innerHtml += '吃';
           }
-          $('#gameDiv').append(
+          mainContent.append(
             '<button class="game-action-btn-select" data-idx="' + idx + '"' + ' style="' + posStyle + '">'
             + innerHtml + '</button>'
           );
@@ -400,7 +404,7 @@ socket.on('rerender', function (data) {
           const info = optionMap[opt] || { label: opt, icon: '' };
           const pos = positions.east.buttonRow[idx];
           if (!pos) return;
-          $('#gameDiv').append(
+          mainContent.append(
             '<img class="game-action-btn" data-action="' + opt + '"'
             + ' src="' + info.icon + '"'
             + ' alt="' + info.label + '"'
@@ -422,6 +426,9 @@ socket.on('rerender', function (data) {
       }
       const actionHtml = '<div class="action-hint">' + actionTextMap[player.ActiveAction] + '</div>';
       tileContainer.append(actionHtml);
+
+      if (idx === 0)
+        playSound(player.ActiveAction);
     }
   });
 
@@ -452,7 +459,7 @@ socket.on('rerender', function (data) {
   });
 
   // 右键摸切功能
-  $('#gameDiv').off('contextmenu').on('contextmenu', function (e) {
+  mainContent.off('contextmenu').on('contextmenu', function (e) {
     e.preventDefault(); // 阻止默认右键菜单
     const card = players[0].DrawCard;
     const getValue = c => (c.Value === 0 ? 5 : c.Value);
@@ -717,7 +724,7 @@ function playSound(soundName) {
   if (window.gameSounds && window.gameSounds[soundName]) {
     try {
       // 检查是否应该播放音效（可以添加设置选项）
-      const shouldPlaySound = localStorage.getItem('soundEnabled');
+      const shouldPlaySound = localStorage.getItem('soundEnabled') !== 'false';
       if (!shouldPlaySound) return;
 
       // 重置音频到开头
@@ -734,6 +741,6 @@ function playSound(soundName) {
 
 // 可选：添加音效开关功能
 function toggleSound() {
-  const isSoundEnabled = localStorage.getItem('soundEnabled');
+  const isSoundEnabled = localStorage.getItem('soundEnabled') !== 'false';
   localStorage.setItem('soundEnabled', !isSoundEnabled);
 }

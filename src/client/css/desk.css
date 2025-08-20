@@ -21,6 +21,10 @@ html {
   background: rgba(255, 255, 255, 1);
 }
 
+.main-content {
+  width: 100%;
+}
+
 #gameDiv {
   position: relative;
   top: -40px;
