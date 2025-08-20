@@ -81,6 +81,8 @@ io.on('connection', (socket) => {
       if (player.Status == 'WaitingCardOrAction' || player.Status == 'WaitingAction' || player.Status == 'WaitingTsumoOrKan') {
         game.ActionList.push({ Player: player, Action: data.Action });
         player.Status = '';
+        if (data.Action == 'Pass')
+          player.Options = [];
         game.ActionManager();
       }
     }

@@ -3,6 +3,7 @@ const Card = require('./card');
 const Deck = function (washizu = false) {
   this.Cards = [];
   this.washizu = washizu;
+  // this.i = 0;
 
   //创建136张初始手牌
   this.Shuffle = () => {
@@ -57,6 +58,16 @@ const Deck = function (washizu = false) {
     // 从牌组中移除这张牌
     this.Cards.splice(index, 1);
     return card;
+    // let tempDeck = [new Card(1, 'z', true), new Card(2, 'z', true),
+    // new Card(5, 'm', true), new Card(5, 'm'), new Card(1, 's', true), new Card(2, 's', true), new Card(3, 's', true), new Card(4, 's', true), new Card(5, 's', true), new Card(6, 's', true), new Card(7, 's', true), new Card(8, 's', true), new Card(9, 's', true), new Card(1, 'z'), new Card(2, 'z'),
+    // new Card(5, 'p', true), new Card(6, 'm'), new Card(1, 's', true), new Card(2, 's', true), new Card(3, 's', true), new Card(4, 's', true), new Card(5, 's', true), new Card(6, 's', true), new Card(7, 's', true), new Card(8, 's', true), new Card(9, 's', true), new Card(3, 'z'), new Card(4, 'z'),
+    // new Card(3, 'p', true), new Card(7, 'm'), new Card(1, 's', true), new Card(2, 's', true), new Card(3, 's', true), new Card(4, 's', true), new Card(5, 's', true), new Card(6, 's', true), new Card(7, 's', true), new Card(8, 's', true), new Card(9, 's', true), new Card(5, 'z'), new Card(6, 'z'),
+    // new Card(2, 'm', true), new Card(8, 'm'), new Card(1, 'p', true), new Card(2, 'p', true), new Card(3, 'p', true), new Card(4, 'p', true), new Card(5, 'p', true), new Card(6, 'p', true), new Card(7, 'p', true), new Card(8, 'p', true), new Card(9, 'p', true), new Card(7, 'z'), new Card(6, 'z', true),
+    // new Card(5, 'z', true), new Card(5, 'm', true), new Card(2, 'z', true), new Card(3, 'z', true), new Card(4, 'z', true), new Card(0, 'm', true), new Card(7, 'z', true), new Card(6, 'z', true), new Card(1, 'z', true), new Card(9, 'm', true), new Card(1, 'm', true), new Card(2, 'm', true), new Card(3, 'm', true),
+    // ];
+    // let retCard = tempDeck[this.i];
+    // this.i++;
+    // return retCard;
   };
 };
 

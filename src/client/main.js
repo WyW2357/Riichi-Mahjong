@@ -6,6 +6,66 @@ $(document).ready(function () {
   $('.modal-trigger').leanModal();
   // 初始化工具提示功能，设置延迟时间为50毫秒，当鼠标悬停在带有 tooltipped 类的元素上时，会显示提示信息
   $('.tooltipped').tooltip({ delay: 50 });
+  // 预加载所有图片资源，确保游戏运行时不会出现图片加载延迟
+  const images = [
+    'img/Back.svg', 'img/RiichiBou.svg', 'img/Chi.svg', 'img/Pon.svg', 'img/Kan.svg',
+    'img/Riichi.svg', 'img/Pass.svg', 'img/Ron.svg', 'img/Tsumo.svg',
+    'img/0s.svg', 'img/0p.svg', 'img/0m.svg',
+    'img/1s.svg', 'img/1p.svg', 'img/1m.svg',
+    'img/2s.svg', 'img/2p.svg', 'img/2m.svg',
+    'img/3s.svg', 'img/3p.svg', 'img/3m.svg',
+    'img/4s.svg', 'img/4p.svg', 'img/4m.svg',
+    'img/5s.svg', 'img/5p.svg', 'img/5m.svg',
+    'img/6s.svg', 'img/6p.svg', 'img/6m.svg',
+    'img/7s.svg', 'img/7p.svg', 'img/7m.svg',
+    'img/8s.svg', 'img/8p.svg', 'img/8m.svg',
+    'img/9s.svg', 'img/9p.svg', 'img/9m.svg',
+    'img/1z.svg', 'img/2z.svg', 'img/3z.svg', 'img/4z.svg',
+    'img/5z.svg', 'img/6z.svg', 'img/7z.svg',
+    'img/0m-t.svg', 'img/0p-t.svg', 'img/0s-t.svg',
+    'img/1m-t.svg', 'img/1p-t.svg', 'img/1s-t.svg',
+    'img/2m-t.svg', 'img/2p-t.svg', 'img/2s-t.svg',
+    'img/3m-t.svg', 'img/3p-t.svg', 'img/3s-t.svg',
+    'img/4m-t.svg', 'img/4p-t.svg', 'img/4s-t.svg',
+    'img/5m-t.svg', 'img/5p-t.svg', 'img/5s-t.svg',
+    'img/6m-t.svg', 'img/6p-t.svg', 'img/6s-t.svg',
+    'img/7m-t.svg', 'img/7p-t.svg', 'img/7s-t.svg',
+    'img/8m-t.svg', 'img/8p-t.svg', 'img/8s-t.svg',
+    'img/9m-t.svg', 'img/9p-t.svg', 'img/9s-t.svg',
+    'img/1z-t.svg', 'img/2z-t.svg', 'img/3z-t.svg', 'img/4z-t.svg',
+    'img/5z-t.svg', 'img/6z-t.svg', 'img/7z-t.svg',
+  ];
+  images.forEach(function (src) {
+    const img = new Image();
+    img.src = src;
+  });
+
+  // // 预加载音效文件
+  // const sounds = [
+  //   'sounds/Chi.mp3', 'sounds/Pon.mp3', 'sounds/Kan.mp3',
+  //   'sounds/Riichi.mp3', 'sounds/Ron.mp3', 'sounds/Tsumo.mp3',
+  // ]
+  // window.gameSounds = {};
+  // sounds.forEach(function (src) {
+  //   const audio = new Audio(src);
+  //   audio.preload = 'auto';
+  //   const audioName = src.split('/').pop().split('.')[0];
+  //   window.gameSounds[audioName] = audio;
+  // });
+
+  // // 添加音效开关按钮
+  // $('#gameDiv').append('<button id="soundToggle" class="sound-toggle-btn">🔊</button>');
+  // localStorage.setItem('soundEnabled', false); // 默认音效关闭
+
+  // $('#soundToggle').on('click', function () {
+  //   const isSoundEnabled = localStorage.getItem('soundEnabled');
+  //   localStorage.setItem('soundEnabled', !isSoundEnabled);
+  //   $(this).text(isSoundEnabled ? '🔇' : '🔊');
+  // });
+
+  // // 初始化按钮状态
+  // const isSoundEnabled = localStorage.getItem('soundEnabled');
+  // $('#soundToggle').text(isSoundEnabled ? '🔊' : '🔇');
 });
 
 var socket = io();
@@ -237,9 +297,14 @@ socket.on('rerender', function (data) {
       let posStyle = 'left:' + leftBound + 'px;top:' + upperBound + 'px;';
       if (dir === 'east') {
         let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(player.DrawCard) + '">';
-        tileContainer.append('<span id="draw-card" class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '"'
-          + ' data-card-type="draw" data-card-index="13">'
-          + cardImg + '</span>');
+        const getValue = c => (c.Value === 0 ? 5 : c.Value);
+        if (data.DisabledCards && data.DisabledCards.some(c => c.Type === player.DrawCard.Type && getValue(c) === getValue(player.DrawCard)))
+          // 如果是被禁止打出的牌，则添加灰色遮罩
+          tileContainer.append('<span class="mj-card" style="position:absolute;' + posStyle + '"'
+            + ' data-card-index="13" data-card-type="draw">' + cardImg + '<div class="disabled-mask"></div></span>');
+        else
+          tileContainer.append('<span class="mj-card selectable-card" style="position:absolute;cursor:pointer;' + posStyle + '"'
+            + ' data-card-index="13" data-card-type="draw">' + cardImg + '</span>');
       } else {
         if (player.DrawCard.Transparent) {
           let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(player.DrawCard) + '">';
@@ -264,21 +329,20 @@ socket.on('rerender', function (data) {
             if (meld.Type === 'Kakan') {
               let zeroNum = meld.Cards.filter(c => c.Value === 0 && (c.Type == 's' || c.Type == 'p' || c.Type == 'm')).length;
               let fiveNum = meld.Cards.filter(c => c.Value === 5 && (c.Type == 's' || c.Type == 'p' || c.Type == 'm')).length;
+              let transparentNum = meld.Cards.filter(c => c.Transparent).length;
+              let KakanCard = { Value: card.Value, Type: card.Type, Transparent: false };
               if (zeroNum === 1 && fiveNum === 2) {
-                let kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
-                let cardImg = '<img class="mj-front" src="' + GetCardImgSrc({ Value: 5, Type: card.Type }) + '">';
-                tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
+                KakanCard.Value = 5;
               }
               else if (fiveNum === 3) {
-                let kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
-                let cardImg = '<img class="mj-front" src="' + GetCardImgSrc({ Value: 0, Type: card.Type }) + '">';
-                tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
+                KakanCard.Value = 0;
               }
-              else {
-                let kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
-                let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(card) + '">';
-                tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
+              if (transparentNum === 2) {
+                KakanCard.Transparent = true;
               }
+              let kakanPosStyle = 'left:' + rightBound + 'px;top:' + (upperBound - 38) + 'px;transform:rotate(270deg);transform-origin:left bottom;';
+              let cardImg = '<img class="mj-front" src="' + GetCardImgSrc(KakanCard) + '">';
+              tileContainer.append('<span class="mj-card" style="position:absolute;' + kakanPosStyle + '">' + cardImg + '</span>');
             }
             rightBound -= 52;
           }
@@ -345,6 +409,20 @@ socket.on('rerender', function (data) {
         });
       }
     }
+
+    // 渲染操作提示
+    if (player.ActiveAction && player.ActiveAction !== '') {
+      const actionTextMap = {
+        'Chi': '吃',
+        'Pon': '碰',
+        'Kan': '杠',
+        'Riichi': '立直',
+        'Ron': '和',
+        'Tsumo': '自摸',
+      }
+      const actionHtml = '<div class="action-hint">' + actionTextMap[player.ActiveAction] + '</div>';
+      tileContainer.append(actionHtml);
+    }
   });
 
   // 按钮点击选中功能
@@ -377,7 +455,8 @@ socket.on('rerender', function (data) {
   $('#gameDiv').off('contextmenu').on('contextmenu', function (e) {
     e.preventDefault(); // 阻止默认右键菜单
     const card = players[0].DrawCard;
-    if (card) {
+    const getValue = c => (c.Value === 0 ? 5 : c.Value);
+    if (card && !data.DisabledCards.some(c => c.Type === card.Type && getValue(c) === getValue(card))) {
       // 发送摸切请求到服务器
       socket.emit('selectCard', { Card: card, Type: 'draw' });
       console.log('摸切牌:', card);
@@ -424,28 +503,22 @@ const renderShowCards = (showCards) => {
       // 从左向右渲染，与主游戏桌面保持一致
       for (let cardIdx = 0; cardIdx < show.Cards.length; cardIdx++) {
         let card = show.Cards[cardIdx];
-        // 明杠特殊处理逻辑
-        if (show.Type === 'Kakan') {
-          let zeroNum = show.Cards.filter(c => c.Value === 0 && (c.Type == 's' || c.Type == 'p' || c.Type == 'm')).length;
-          let fiveNum = show.Cards.filter(c => c.Value === 5 && (c.Type == 's' || c.Type == 'p' || c.Type == 'm')).length;
-          if (zeroNum === 1 && fiveNum === 2) {
-            // 显示5
-            html += `<img src="img/5${card.Type}.svg" style="width: 38px; height: 52px; margin: 0px;">`;
-          } else if (fiveNum === 3) {
-            // 显示0
-            html += `<img src="img/0${card.Type}.svg" style="width: 38px; height: 52px; margin: 0px;">`;
-          } else {
-            // 正常显示
-            html += `<img src="img/${card.Value}${card.Type}.svg" style="width: 38px; height: 52px; margin: 0px;">`;
-          }
+        if (show.Closed && show.Closed[cardIdx]) {
+          html += `<img src="img/Back.svg" style="width: 38px; height: 52px; margin: 0px;">`;
         } else {
-          if (show.Closed && show.Closed[cardIdx]) {
-            html += `<img src="img/Back.svg" style="width: 38px; height: 52px; margin: 0px;">`;
-          } else {
-            const cardStyle = 'width: 38px; height: 52px; margin: 0px;';
-            html += `<img src="img/${card.Value}${card.Type}.svg" style="${cardStyle}">`;
-          }
+          html += `<img src="img/${card.Value}${card.Type}.svg" style="width: 38px; height: 52px; margin: 0px;">`;
         }
+      }
+      if (show.Type === 'Kakan') {
+        // 如果是加杠，则显示加杠牌
+        let fiveNum = show.Cards.filter(c => c.Value === 5 && (c.Type == 's' || c.Type == 'p' || c.Type == 'm')).length;
+        let zeroNum = show.Cards.filter(c => c.Value === 0 && (c.Type == 's' || c.Type == 'p' || c.Type == 'm')).length;
+        let kakanCard = { Value: show.Cards[0].Value, Type: show.Cards[0].Type };
+        if (zeroNum === 1 && fiveNum === 2)
+          kakanCard.Value = 5; // 如果是0,5,5的加杠牌，则显示5
+        else if (fiveNum === 3)
+          kakanCard.Value = 0; // 如果是5,5,5的加杠牌，则显示0
+        html += `<img src="img/${kakanCard.Value}${kakanCard.Type}.svg" style="width: 38px; height: 52px; margin: 0px;">`;
       }
     }
   }
@@ -638,3 +711,29 @@ socket.on('showEndGameResult', function (data) {
     window.location.href = 'index.html';
   }, 30000);
 });
+
+// 带控制的播放音效函数
+function playSound(soundName) {
+  if (window.gameSounds && window.gameSounds[soundName]) {
+    try {
+      // 检查是否应该播放音效（可以添加设置选项）
+      const shouldPlaySound = localStorage.getItem('soundEnabled');
+      if (!shouldPlaySound) return;
+
+      // 重置音频到开头
+      window.gameSounds[soundName].currentTime = 0;
+      // 设置音量
+      window.gameSounds[soundName].volume = 0.7;
+      // 播放音频
+      window.gameSounds[soundName].play();
+    } catch (error) {
+      console.log('音效播放失败:', error);
+    }
+  }
+}
+
+// 可选：添加音效开关功能
+function toggleSound() {
+  const isSoundEnabled = localStorage.getItem('soundEnabled');
+  localStorage.setItem('soundEnabled', !isSoundEnabled);
+}

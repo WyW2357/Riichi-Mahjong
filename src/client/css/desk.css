@@ -3,6 +3,24 @@ html {
   overflow: hidden;
 }
 
+.sound-toggle-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.sound-toggle-btn:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
 #gameDiv {
   position: relative;
   top: -40px;
@@ -235,6 +253,47 @@ html {
 
 #gameDiv .tile-container.north {
   transform: rotate(90deg);
+}
+
+#gameDiv .tile-container .action-hint {
+  position: absolute;
+  z-index: 200;
+  left: 50%;
+  top: 720px;
+  transform: translateX(-50%);
+  font-size: 64px;
+  color: #000;
+  animation: fadeOut 1s forwards;
+}
+
+#gameDiv .tile-container.east .action-hint {
+  transform: translateX(-50%) rotate(0deg);
+}
+
+#gameDiv .tile-container.south .action-hint {
+  transform: translateX(-50%) rotate(90deg);
+}
+
+#gameDiv .tile-container.west .action-hint {
+  transform: translateX(-50%) rotate(180deg);
+}
+
+#gameDiv .tile-container.north .action-hint {
+  transform: translateX(-50%) rotate(270deg);
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 #gameDiv .game-action-btn-select {

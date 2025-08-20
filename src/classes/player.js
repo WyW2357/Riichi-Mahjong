@@ -23,6 +23,7 @@ const Player = function (playername, socket) {
     riichi: false,
   };
   this.DisabledCards = []; // 禁止打出的牌
+  this.ActiveAction = '';
 
   //摸牌
   this.AddCard = (card) => {
