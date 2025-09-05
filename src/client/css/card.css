@@ -81,6 +81,7 @@
   transition: box-shadow 0.15s, background 0.15s, transform 0.1s;
   cursor: pointer;
   user-select: none;
+  pointer-events: all;
 }
 
 .game-action-btn:hover {

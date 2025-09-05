@@ -58,12 +58,13 @@ $(document).ready(function () {
 
   // 添加音效开关按钮
   $('#gameDiv').append('<button id="soundToggle" class="sound-toggle-btn">🔊</button>');
-  localStorage.setItem('soundEnabled', false); // 默认音效关闭
+  localStorage.setItem('soundEnabled', 'false'); // 默认音效关闭
 
   $('#soundToggle').on('click', function () {
     const isSoundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-    localStorage.setItem('soundEnabled', !isSoundEnabled);
-    $(this).text(isSoundEnabled ? '🔇' : '🔊');
+    const newSoundEnabled = !isSoundEnabled;
+    localStorage.setItem('soundEnabled', newSoundEnabled.toString());
+    $(this).text(newSoundEnabled ? '🔊' : '🔇');
   });
 
   // 初始化按钮状态
