@@ -310,6 +310,7 @@ html {
   background: #ffe066;
   border: 1px solid gray;
   border-radius: 2px;
+  pointer-events: all;
 }
 
 #gameDiv .game-action-btn-select span {

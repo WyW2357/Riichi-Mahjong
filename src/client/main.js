@@ -428,8 +428,7 @@ socket.on('rerender', function (data) {
       const actionHtml = '<div class="action-hint">' + actionTextMap[player.ActiveAction] + '</div>';
       tileContainer.append(actionHtml);
 
-      if (idx === 0)
-        playSound(player.ActiveAction);
+      playSound(player.ActiveAction);
     }
   });
 
