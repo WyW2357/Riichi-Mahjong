@@ -43,18 +43,21 @@ $(document).ready(function () {
     img.src = src;
   });
 
-  // 预加载音效文件
-  const sounds = [
-    'sounds/Chi.mp3', 'sounds/Pon.mp3', 'sounds/Kan.mp3',
-    'sounds/Riichi.mp3', 'sounds/Ron.mp3', 'sounds/Tsumo.mp3',
-  ]
+  // 依次慢慢加载音效，避免并发导致429
   window.gameSounds = {};
-  sounds.forEach(function (src) {
+  const soundList = [
+    'Chi', 'Pon', 'Kan', 'Riichi', 'Ron', 'Tsumo'
+  ];
+  function loadSoundsSequentially(list, idx = 0) {
+    if (idx >= list.length) return;
+    const name = list[idx];
+    const src = 'sounds/' + name + '.mp3';
     const audio = new Audio(src);
     audio.preload = 'auto';
-    const audioName = src.split('/').pop().split('.')[0];
-    window.gameSounds[audioName] = audio;
-  });
+    window.gameSounds[name] = audio;
+    setTimeout(() => loadSoundsSequentially(list, idx + 1), 500); // 每500ms加载一个
+  }
+  loadSoundsSequentially(soundList);
 
   // 添加音效开关按钮
   $('#gameDiv').append('<button id="soundToggle" class="sound-toggle-btn">🔊</button>');
@@ -721,21 +724,21 @@ socket.on('showEndGameResult', function (data) {
 
 // 带控制的播放音效函数
 function playSound(soundName) {
-  if (window.gameSounds && window.gameSounds[soundName]) {
-    try {
-      // 检查是否应该播放音效（可以添加设置选项）
-      const shouldPlaySound = localStorage.getItem('soundEnabled') !== 'false';
-      if (!shouldPlaySound) return;
-
-      // 重置音频到开头
-      window.gameSounds[soundName].currentTime = 0;
-      // 设置音量
-      window.gameSounds[soundName].volume = 0.7;
-      // 播放音频
-      window.gameSounds[soundName].play();
-    } catch (error) {
-      console.log('音效播放失败:', error);
-    }
+  if (!window.gameSounds[soundName]) {
+    // 懒加载音效
+    const src = 'sounds/' + soundName + '.mp3';
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    window.gameSounds[soundName] = audio;
+  }
+  try {
+    const shouldPlaySound = localStorage.getItem('soundEnabled') !== 'false';
+    if (!shouldPlaySound) return;
+    window.gameSounds[soundName].currentTime = 0;
+    window.gameSounds[soundName].volume = 0.7;
+    window.gameSounds[soundName].play();
+  } catch (error) {
+    console.log('音效播放失败:', error);
   }
 }
 
