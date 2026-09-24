@@ -1,0 +1,26 @@
+# Run each command in PowerShell.
+Set-Location "C:\Users\WUYOU\Riichi-Mahjong"
+$git = "C:\Program Files\Git\cmd\git.exe"
+
+# Set your identity once. Replace the example values first.
+& $git config --global user.name "YOUR_GITHUB_USERNAME"
+& $git config --global user.email "YOUR_GITHUB_EMAIL"
+
+# Review changes.
+& $git status
+
+# Stage project files not excluded by .gitignore.
+& $git add .
+
+# workshop/ is ignored. Force-add only the notebook, not .venv or generated images.
+& $git add -f workshop/image_process.ipynb
+
+# Check staged files before committing.
+& $git status
+
+# Commit. You can change the message.
+& $git commit -m "Add mahjong assets and image processing script"
+
+# Rebase onto origin/main, then push.
+& $git pull --rebase origin main
+& $git push origin main
