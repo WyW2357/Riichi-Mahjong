@@ -3,4 +3,4 @@ const Card = function (value, type) {
   this.Type = type; // 'm', 'p', 's', 'z'
 };
 
-module.exports = Card;
+export default Card;

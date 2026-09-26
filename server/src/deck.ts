@@ -1,4 +1,4 @@
-const Card = require('./card');
+import Card from './card.ts';
 
 const Deck = function() {
   this.Cards = [];
@@ -47,4 +47,4 @@ const Deck = function() {
   };
 };
 
-module.exports = Deck; 
+export default Deck;

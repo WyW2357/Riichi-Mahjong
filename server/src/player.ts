@@ -53,4 +53,4 @@ const Player = function (playername, socket) {
   };
 };
 
-module.exports = Player; 
+export default Player;

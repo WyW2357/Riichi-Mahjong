@@ -6,6 +6,7 @@ const io = new Server(PORT);
 
 const rooms = [];
 
+const isValidName = (name) => !!name && name.length <= 10;
 const randomCode = () => Array.from({ length: 4 }, () => Math.floor(Math.random() * 10)).join('');
 const playerNames = (game) => game.Players.map((p) => p.UserName);
 

@@ -1,8 +1,11 @@
-const Deck = require('./deck');            // 引入牌组类
-const Player = require('./player');        // 引入玩家类
-const fs = require('fs');                  // 引入文件系统模块
-const path = require('path');              // 引入路径处理模块
-const JapaneseMaj = require("./japanesemaj.min.js");
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import Deck from './deck.ts';
+import Player from './player.ts';
+
+// UMD 库只能以 CommonJS 方式加载
+const JapaneseMaj = createRequire(import.meta.url)('./japanesemaj.min.js');
 
 const Game = function (code, host) {
   this.Deck = new Deck();         // 创建新的牌组实例
@@ -27,7 +30,7 @@ const Game = function (code, host) {
   this.ActionTimers = new Map();  // 玩家行动计时器
 
   // 清空同名GameData.txt
-  const logFile = path.join(__dirname, `../../GameData/GameData_${this.GameCode}.txt`);
+  const logFile = path.join(import.meta.dirname, `../../GameData/GameData_${this.GameCode}.txt`);
   fs.writeFile(logFile, '', (err) => {
     if (err)
       console.error('清空日志文件失败: ', err);
@@ -53,7 +56,7 @@ const Game = function (code, host) {
     }
     this.IsWriting = true;
     const logMessage = this.LogQueue.shift();
-    const logFile = path.join(__dirname, `../../GameData/GameData_${this.GameCode}.txt`);
+    const logFile = path.join(import.meta.dirname, `../../GameData/GameData_${this.GameCode}.txt`);
     fs.appendFile(logFile, logMessage, (err) => {
       if (err) console.error('写入日志文件失败: ', err);
       // 继续写入队列中的下一条日志
