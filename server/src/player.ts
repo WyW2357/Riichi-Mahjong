@@ -1,56 +1,95 @@
-const Player = function (playername, socket) {
-  this.UserName = playername;
-  this.Socket = socket;
-  this.HandCards = [];
-  this.RiverCards = [];
-  this.ShowCards = [];        //副露：多种类型区分
-  this.HistoryCards = [];
-  this.DrawCard = '';
-  this.Points = 25000;
-  this.Position = 0;
-  this.Status = '';   // WaitingCard WaitingAction WaitingSelect WaitingCardOrAction WaitingRiichi WaitingTsumoOrKan
-  this.Options = [];
-  this.IsRiichi = false;
-  this.IsDoubleRiichi = false;
-  this.IsYiFa = false;
-  this.IsLingShang = false;
-  this.IsTingPai = false;
+import WebSocket from 'ws';
 
-  //摸牌
-  this.AddCard = (card) => {
-    this.HandCards.push(card);
-  };
+import Card from './Card.ts';
 
-  //理牌
-  this.SortHandCards = () => {
-    this.HandCards.sort((a, b) => {
-      const typeOrder = { 'm': 0, 'p': 1, 's': 2, 'z': 3 };
-      const aType = typeOrder[a.Type];
-      const bType = typeOrder[b.Type];
-      if (aType !== bType) {
-        return aType - bType;
-      }
-      // 红宝牌（value=0）视为5.5
-      const aValue = a.Value === 0 ? 5.5 : a.Value;
-      const bValue = b.Value === 0 ? 5.5 : b.Value;
-      return aValue - bValue;
-    });
-  };
+export interface ShownCard {
+    Type: string;
+    Name: string;
+    Cards: Card[];
+}
 
-  // 向玩家发送事件
-  this.Emit = (eventName, data) => {
-    this.Socket.emit(eventName, data);
-  };
+export class Player {
+    Name: string;
+    WebSocket: WebSocket;
 
-  // 移除一张牌
-  this.RemoveCard = (card) => {
-    for (let i = 0; i < this.HandCards.length; i++) {
-      if (this.HandCards[i].Type === card.Type && this.HandCards[i].Value === card.Value) {
-        this.HandCards.splice(i, 1);
-        return;
-      }
+    Position: number;
+    Points: number;
+    Options: any;
+
+    HandCards: Card[];
+    DrawnCard: Card;
+    RiverCards: Card[];
+    ShownCards: ShownCard[];
+    HistoryCards: Card[];
+    
+    IsRiichi: boolean;
+    IsDoubleRiichi: boolean;
+    IsYiFa: boolean;
+    IsLingShang: boolean;
+    Listening: String[];
+    Furiten: { [key: string]: boolean };
+    Timer: [number, number];
+
+
+    constructor(name: string, socket: WebSocket) {
+        this.Name = name;
+        this.WebSocket = socket;
+
+        this.Position = -1;
+        this.Points = 25000;
+        this.Options = [];
+
+        this.HandCards = [];
+        this.DrawnCard = null;
+        this.RiverCards = [];
+        this.ShownCards = [];
+        this.HistoryCards = [];
+        
+        this.IsRiichi = false;
+        this.IsDoubleRiichi = false;
+        this.IsYiFa = false;
+        this.IsLingShang = false;
+        this.Listening = [];
+        this.Furiten = {
+            Discard: false,
+            Temporary: false,
+            Riichi: false
+        };
+        this.Timer = [0, 0];
     }
-  };
-};
 
+
+    AddCard(card: Card) {
+        this.HandCards.push(card);
+    }
+
+
+    RemoveCard(card: Card) {
+        for (let i = 0; i < this.HandCards.length; i++) {
+            if (this.HandCards[i].Value === card.Value && this.HandCards[i].Suit === card.Suit) {
+                this.HandCards.splice(i, 1);
+                return;
+            }
+        }
+    }
+
+
+    SortHandCards() {
+        this.HandCards.sort((a, b) => {
+            let suitsOrder = { 'm': 0, 'p': 1, 's': 2, 'z': 3 };
+            let aSuit = suitsOrder[a.Suit];
+            let bSuit = suitsOrder[b.Suit];
+            if (aSuit !== bSuit) return aSuit - bSuit;
+
+            let aValue = a.Value === 0 ? 4.5 : a.Value;
+            let bValue = b.Value === 0 ? 4.5 : b.Value;
+            return aValue - bValue;
+        });
+    }
+
+
+    Emit(eventName: string, data: any) {
+        this.WebSocket.send(JSON.stringify({ event: eventName, data }));
+    }
+};
 export default Player;

@@ -1,6 +1,8 @@
 import { _decorator, Component, Node, Sprite, SpriteFrame, Vec2 } from 'cc';
 const { ccclass, property } = _decorator;
 
+import net from './Network';
+
 
 @ccclass('Card')
 export class Card extends Component {
@@ -30,6 +32,13 @@ export class Card extends Component {
         this.node.on(Node.EventType.MOUSE_LEAVE, () => {
             this.node.setPosition(cardPosition.x, cardPosition.y);
         });
+
+        this.node.on(Node.EventType.MOUSE_DOWN, () => {
+            if (this.canClick) {
+                net.emit('cardClicked', cardName);
+            }
+        });
+
     }
 }
 export default Card;

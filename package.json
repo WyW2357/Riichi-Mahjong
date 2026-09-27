@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "socket.io-client": "^4.8.4"
+  },
+  "creator": {
+    "version": "3.8.8"
+  },
+  "uuid": "f6e1c569-b146-4b96-920c-93b3b39da15d"
+}

@@ -3,15 +3,20 @@ const { ccclass, property } = _decorator;
 
 import Card from './Card';
 import ShownCards from './ShownCards';
+import Net from './Network';
 
 interface DataInfo {
-    Seat: number,
+    Position: number,
+
     HandCards: string[][],
     DrawnCard: string[],
+
     Timer: number[],
     Furiten: boolean,
+
     RiverCards: string[][],
     ShownCards: string[][][],
+
     WallCards: string[],
     Heads: string[],
     Names: string[],
@@ -76,7 +81,7 @@ export class Game extends Component {
     HeadsSpriteFrames: SpriteFrame[] = [];
 
     CurrentData: DataInfo = {
-        Seat: 0,
+        Position: 0,
         Timer: [0, 0],
         Furiten: false,
         DrawnCard: [null, null, null, null],
@@ -215,7 +220,7 @@ export class Game extends Component {
 
     setRiichiBou(riichiBou: boolean[]) {
         for (let i = 0; i < this.RiichiBousNode.children.length; i++) {
-            let pos = ((4 - this.CurrentData.Seat) % 4 + i) % 4;
+            let pos = ((4 - this.CurrentData.Position) % 4 + i) % 4;
             this.RiichiBousNode.children[pos].getComponent(Sprite).enabled = riichiBou[i];
         }
     }
@@ -223,7 +228,7 @@ export class Game extends Component {
 
     setWinds() {
         for (let i = 0; i < this.WindsNode.children.length; i++) {
-            let pos = ((4 - this.CurrentData.Seat) % 4 + i) % 4;
+            let pos = ((4 - this.CurrentData.Position) % 4 + i) % 4;
             this.WindsNode.children[pos].getChildByName("Label").getComponent(Label).string = i === 0 ? '东' : i === 1 ? '南' : i === 2 ? '西' : '北';
             this.WindsNode.children[pos].getChildByName("Label").getComponent(Label).color = i === 0 ? new Color(255, 0, 0) : new Color(0, 0, 0);
         }
@@ -244,7 +249,7 @@ export class Game extends Component {
 
     setHeads(headNames: string[], names: string[], points: number[]) {
         for (let i = 0; i < this.HeadsNode.children.length; i++) {
-            let pos = ((4 - this.CurrentData.Seat) % 4 + i) % 4;
+            let pos = ((4 - this.CurrentData.Position) % 4 + i) % 4;
             this.HeadsNode.children[pos].getChildByName("Picture").getComponent(Sprite).spriteFrame = this.HeadsSpriteFrames[this.HeadsSpriteFrames.findIndex(head => head.name === headNames[i])];
             this.HeadsNode.children[pos].getChildByName("Name").getComponent(Label).string = names[i];
             this.HeadsNode.children[pos].getChildByName("Point").getComponent(Label).string = (points[i] / 100).toString() + ' 00';
@@ -260,7 +265,7 @@ export class Game extends Component {
             this.HandCardsNode.children[i].removeAllChildren();
         }
         for (let i = 0; i < handCards.length; i++) {
-            let pos = ((4 - this.CurrentData.Seat) % 4 + i) % 4; 
+            let pos = ((4 - this.CurrentData.Position) % 4 + i) % 4; 
             for (let j = 0; j < handCards[i].length; j++) {
                 let handCardNode = instantiate(this.CardPrefab);
                 let handCardPosition = new Vec2(j * this.CARD_WIDTH, 0);
@@ -277,7 +282,7 @@ export class Game extends Component {
         }
         for (let i = 0; i < drawnCard.length; i++) {
             if (!drawnCard[i]) continue;
-            let pos = ((4 - this.CurrentData.Seat) % 4 + i) % 4; 
+            let pos = ((4 - this.CurrentData.Position) % 4 + i) % 4; 
             let drawnCardNode = instantiate(this.CardPrefab);
             let drawnCardPosition = new Vec2(this.CARD_WIDTH * this.CurrentData.HandCards[i].length + this.CARD_WIDTH / 2, 0);
             drawnCardNode.getComponent(Card).setCard(drawnCard[i], drawnCardPosition, pos === 0);
@@ -291,7 +296,7 @@ export class Game extends Component {
             this.RiverCardsNode.children[i].removeAllChildren();
         }
         for (let i = 0; i < riverCards.length; i++) {
-            let pos = ((4 - this.CurrentData.Seat) % 4 + i) % 4;
+            let pos = ((4 - this.CurrentData.Position) % 4 + i) % 4;
             let riverCardPosition = new Vec2(-this.CARD_WIDTH, 0);
             for (let j = 0; j < riverCards[i].length; j++) {
                 let riverCardNode = instantiate(this.CardPrefab)
@@ -318,7 +323,7 @@ export class Game extends Component {
             this.ShownCardsNode.children[i].removeAllChildren();
         }
         for (let i = 0; i < shownCards.length; i++) {
-            let pos = ((4 - this.CurrentData.Seat) % 4 + i) % 4;
+            let pos = ((4 - this.CurrentData.Position) % 4 + i) % 4;
             let shownCardPosition = new Vec2(0, 0);
             for (let j = shownCards[i].length - 1; j >= 0; j--) {
                 let shownCardNode = instantiate(this[this.CurrentData.ShownCards[i][j][0] + 'CardsPrefab']);
@@ -378,7 +383,7 @@ export class Game extends Component {
         this.initGame();
 
         this.CurrentData = {
-            Seat: 1,
+            Position: 1,
             Timer: [5, 15],
             Furiten: false,
             DrawnCard: ['1s', '2s', '3s', '4s'],

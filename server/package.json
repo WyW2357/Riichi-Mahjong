@@ -2,15 +2,19 @@
   "name": "server",
   "version": "1.0.0",
   "description": "",
-  "main": "src/app.ts",
+  "main": "src/App.ts",
   "scripts": {
-    "start": "node src/app.ts"
+    "start": "node src/App.ts"
   },
   "keywords": [],
   "author": "WuYou",
   "license": "MIT",
+  "type": "module",
   "dependencies": {
-    "socket.io": "^4.8.4"
+    "ws": "^8.22.0"
   },
-  "type": "module"
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/ws": "^8.18.1"
+  }
 }

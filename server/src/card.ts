@@ -1,6 +1,11 @@
-const Card = function (value, type) {
-  this.Value = value; // 1-9(万/筒/索), 1-7(字牌), 0(红宝牌)
-  this.Type = type; // 'm', 'p', 's', 'z'
-};
+export class Card {
+    Value: number;
+    Suit: string;
 
+    
+    constructor(value: number, suit: string) {
+        this.Value = value;
+        this.Suit = suit;
+    }
+}
 export default Card;
