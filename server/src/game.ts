@@ -1,8 +1,6 @@
 import Card from './Card.ts';
-import Player, { ShownCard } from './Player.ts';
-
-
-const JapaneseMaj = require('./japanesemaj.min.cjs');
+import Player, { type ShownCard } from './Player.ts';
+import JapaneseMaj from './japanesemaj.min.cjs';
 
 
 export class Game {
@@ -17,7 +15,6 @@ export class Game {
     LidoraIndicator: any[];
     RestCardsNum: number;
 
-    KanNum: number;
     ActivePosition: number;
     LastCutCard: { Card: Card; Player: Player; River: boolean };
 
@@ -27,9 +24,10 @@ export class Game {
     HaveNishiba: boolean;
     HaveDaburuYakuman: boolean;
     HaveDaburuKaze: boolean;
+    HaveKuikae: boolean;
 
 
-    constructor(haveAkadora: boolean, haveKiriageMangan: boolean, haveHakoshita: boolean, haveNishiba: boolean, haveDaburuYakuman: boolean, haveDaburuKaze: boolean) {
+    constructor(haveAkadora: boolean, haveKiriageMangan: boolean, haveHakoshita: boolean, haveNishiba: boolean, haveDaburuYakuman: boolean, haveDaburuKaze: boolean, haveKuikae: boolean) {
         this.Players = [];
 
         this.StageNum = 1;
@@ -41,7 +39,6 @@ export class Game {
         this.LidoraIndicator = [];
         this.RestCardsNum = 70;
 
-        this.KanNum = 0;
         this.ActivePosition = 0;
         this.LastCutCard = { Card: null, Player: null, River: false };
 
@@ -51,6 +48,7 @@ export class Game {
         this.HaveNishiba = haveNishiba;
         this.HaveDaburuYakuman = haveDaburuYakuman;
         this.HaveDaburuKaze = haveDaburuKaze;
+        this.HaveKuikae = haveKuikae;
     }
 
 
@@ -120,7 +118,6 @@ export class Game {
         }
 
         this.Shuffle();
-        this.KanNum = 0;
         this.LastCutCard = { Card: null, Player: null, River: false };
 
         this.Draw(this.Players.find(p => p.Position === 0));
@@ -152,6 +149,7 @@ export class Game {
             else {
                 setTimeout(() => {
                     this.Cut(player, player.DrawnCard, true);
+                    return;
                 }, 500);
             }
         }
@@ -214,6 +212,7 @@ export class Game {
             this.ActivePosition = (this.ActivePosition + 1) % 4;
             setTimeout(() => {
                 this.Draw(this.Players.find(p => p.Position === this.ActivePosition));
+                return;
             }, 500);
         }
 
@@ -222,7 +221,7 @@ export class Game {
 
 
     ChiCheck(player: Player) {
-        if (player.IsRiichi || this.LastCutCard.Card.Suit === 'z' || (player.Position - this.LastCutCard.Player.Position + 4) % 4 !== 1) return [];
+        if (player.IsRiichi || this.RestCardsNum === 0 || this.LastCutCard.Card.Suit === 'z' || (player.Position - this.LastCutCard.Player.Position + 4) % 4 !== 1) return [];
 
         let chiOptions = [];
 
@@ -241,7 +240,15 @@ export class Game {
 
         for (let chiCombo of chiValuesMap[this.LastCutCard.Card.Value.toString()]) {
             if (player.HandCards.some(card => card.Suit === this.LastCutCard.Card.Suit && card.Value === chiCombo[0]) && player.HandCards.some(card => card.Suit === this.LastCutCard.Card.Suit && card.Value === chiCombo[1])) {
-                chiOptions.push(this.CardsToName());
+                if (!this.HaveKuikae) {
+                    let canCutCards = player.HandCards.filter(card => card.Suit !== this.LastCutCard.Card.Suit || !(chiValuesMap[card.Value.toString()].includes(chiCombo)));
+                    if (canCutCards.length > 0) {
+                        chiOptions.push('h' + this.LastCutCard.Card.Value.toString() + chiCombo.join('') + this.LastCutCard.Card.Suit);
+                    }
+                }
+                else {
+                    chiOptions.push('h' + this.LastCutCard.Card.Value.toString() + chiCombo.join('') + this.LastCutCard.Card.Suit);
+                }
             }
         }
 
@@ -250,7 +257,7 @@ export class Game {
 
 
     PonCheck(player: Player) {
-        if (player.IsRiichi) return [];
+        if (player.IsRiichi || this.RestCardsNum === 0) return [];
         
         let ponOptions = [];
 
@@ -269,7 +276,21 @@ export class Game {
 
         for (let ponCombo of ponValuesMap[this.LastCutCard.Card.Value.toString()]) {
             if (player.HandCards.some(card => card.Suit === this.LastCutCard.Card.Suit && card.Value === ponCombo[0]) && player.HandCards.some(card => card.Suit === this.LastCutCard.Card.Suit && card.Value === ponCombo[1])) {
-                ponOptions.push(this.CardsToName());
+                let ponName = '';
+                switch ((player.Position - this.LastCutCard.Player.Position + 4) % 4) {
+                    case 1:
+                        ponName = 'h' + this.LastCutCard.Card.Value.toString() + ponCombo.join('') + this.LastCutCard.Card.Suit;
+                        break;
+                    case 2:
+                        ponName = ponCombo[0].toString() + 'h' + this.LastCutCard.Card.Value.toString() + ponCombo[1].toString() + this.LastCutCard.Card.Suit;
+                        break;
+                    case 3:
+                        ponName = ponCombo.join('') + 'h' + this.LastCutCard.Card.Value.toString() +  this.LastCutCard.Card.Suit;
+                        break;
+                    default:
+                        break;
+                }
+                ponOptions.push(ponName);
             }
         }
 
@@ -278,9 +299,9 @@ export class Game {
 
 
     MinkanCheck(player: Player) {
-        if (player.IsRiichi) return [];
+        if (player.IsRiichi || this.RestCardsNum === 0 || this.DoraIndicator.length === 5) return [];
 
-        let minkanOptions = [];
+        let minkanOption = [];
 
         let minkanValuesMap = {
             1: [[1, 1, 1]],
@@ -297,15 +318,31 @@ export class Game {
 
         for (let minkanCombo of minkanValuesMap[this.LastCutCard.Card.Value.toString()]) {
             if (player.HandCards.some(card => card.Suit === this.LastCutCard.Card.Suit && card.Value === minkanCombo[0]) && player.HandCards.some(card => card.Suit === this.LastCutCard.Card.Suit && card.Value === minkanCombo[1]) && player.HandCards.some(card => card.Suit === this.LastCutCard.Card.Suit && card.Value === minkanCombo[2])) {
-                minkanOptions.push(this.CardsToName());
+                let minkanName = '';
+                switch ((player.Position - this.LastCutCard.Player.Position + 4) % 4) {
+                    case 1:
+                        minkanName = 'h' + this.LastCutCard.Card.Value.toString() + minkanCombo.join('') + this.LastCutCard.Card.Suit;
+                        break;
+                    case 2:
+                        minkanName = minkanCombo[0].toString() + 'h' + this.LastCutCard.Card.Value.toString() + minkanCombo[1].toString() + minkanCombo[2].toString() + this.LastCutCard.Card.Suit;
+                        break;
+                    case 3:
+                        minkanName = minkanCombo.join('') + 'h' + this.LastCutCard.Card.Value.toString() +  this.LastCutCard.Card.Suit;
+                        break;
+                    default:
+                        break;
+                }
+                minkanOption.push(minkanName);
             }
         }
 
-        return minkanOptions.length > 0 ? [{ Type: 'Minkan', Names: minkanOptions }] : [];
+        return minkanOption.length > 0 ? [{ Type: 'Minkan', Name: minkanOption }] : [];
     }
 
 
     AnkanCheck(player: Player) {
+        if (this.RestCardsNum === 0 || this.DoraIndicator.length === 5) return [];
+
         let options = [];
      
         if (player.IsRiichi) {
@@ -313,9 +350,18 @@ export class Game {
 
             let newhandCards = player.HandCards.filter(card => !this.EqualCard(card, player.DrawnCard));
             let newShownCards = player.ShownCards.slice();
+
+            let ankanName = '';
+            if (this.HaveAkadora && player.DrawnCard.Suit !== 'z' && (player.DrawnCard.Value === 5 || player.DrawnCard.Value === 0)) {
+                ankanName = '5055' + player.DrawnCard.Suit;
+            }
+            else{
+                ankanName = player.DrawnCard.Value.toString().repeat(4) + player.DrawnCard.Suit;
+            }
+
             let newShownCard: ShownCard = {
                 Type: 'Ankan',
-                Name: this.CardsToName(),
+                Name: ankanName,
                 Cards: [player.DrawnCard, ...player.HandCards.filter(card => this.EqualCard(card, player.DrawnCard))]
             };
             newShownCards.push(newShownCard);
@@ -346,7 +392,7 @@ export class Game {
                     let zeroes = cards.filter(card => card.Value === 0);
                     let fives = cards.filter(card => card.Value === 5);
                     if (zeroes.length == 1 && fives.length == 3) {
-                        options.push({ Type: 'Ankan', Name: this.CardsToName() });
+                        options.push({ Type: 'Ankan', Name: '5055' + suit });
                     }
                 }
 
@@ -360,7 +406,7 @@ export class Game {
 
                 for (let value in valueMap) {
                     if (valueMap[value] === 4) {
-                        options.push({ Type: 'Ankan', Name: this.CardsToName() });
+                        options.push({ Type: 'Ankan', Name: value.toString().repeat(4) + suit });
                     }
                 }
             }
@@ -371,13 +417,13 @@ export class Game {
 
 
     KakanCheck(player: Player) {
-        if (player.IsRiichi || !player.ShownCards.some(card => card.Type === 'Pon')) return [];
+        if (player.IsRiichi || this.RestCardsNum === 0 || this.DoraIndicator.length === 5 || !player.ShownCards.some(card => card.Type === 'Pon')) return [];
 
         let options = [];
         
         for (let shown of player.ShownCards) {
             if (shown.Type === 'Pon' && player.HandCards.some(card => this.EqualCard(card, shown.Cards[0]))) {
-                options.push({ Type: 'Kakan', Name: this.CardsToName() });
+                options.push({ Type: 'Kakan', Name: shown.Name.slice(0, 4) + '_' + this.LastCutCard.Card.Value.toString() + shown.Cards[0].Suit });
             }
         }
 
@@ -481,19 +527,13 @@ export class Game {
     }
 
 
-    CardsToName() {
-        // Convert the player's cards to their human-readable names.
-        return '';
-    }
-
-
     CardsToString(handCards: Card[], drawCard: Card, shownCards: ShownCard[]) {
         let cardsList: string[] = [];
 
         cardsList.push(handCards.map(card => card.Value.toString() + card.Suit).join(''));
 
         if (drawCard) {
-            cardsList.push(drawCard.Value.toString() + drawCard.Suit);
+            cardsList[0] += drawCard.Value.toString() + drawCard.Suit;
         }
 
         for (let shown of shownCards) {
@@ -543,6 +583,50 @@ export class Game {
             if (card.Value === 6) return 33;
             if (card.Value === 7) return 31;
         }
+    }
+
+
+    Test() {
+        let handCards: Card[] = [
+            new Card(1, 'm'), new Card(2, 'm'), new Card(3, 'm'), new Card(4, 'm'), new Card(5, 'm'), new Card(6, 'm'), new Card(7, 'm'), new Card(8, 'm'), new Card(9, 'm'), new Card(4, 'p')
+        ];
+
+        let drawCard: Card = new Card(4, 'p');
+
+        let shownCards: ShownCard[] = [
+            {
+                Type: 'Ankan',
+                Name: 'Ankan',
+                Cards: [new Card(1, 'p'), new Card(1, 'p'), new Card(1, 'p'), new Card(1, 'p')]
+            }
+        ];
+
+        let maj = new JapaneseMaj({
+            changFeng: this.StageNum <= 4 ? 1 : this.StageNum <= 8 ? 2 : 3,
+            ziFeng: 1,
+            dora: [],
+            lidora: [],
+            isLiangLiZhi: false,
+            isLiZhi: false,
+            isYiFa: false,
+            isLingShang: false,
+            isZimo: true,
+            isLast: false,
+            isQiangGang: false,
+            isTianHe: false,
+            isDiHe: false,
+            isRenHe: false,
+            isYanFan: false,
+            isGangZhen: false,
+            isGuYi: false,
+            isLianFeng2Fu: true
+        });
+        let cardsString = this.CardsToString(handCards, drawCard, shownCards);
+        let paixing = JapaneseMaj.getPaixingFromString(cardsString);
+        let res = maj.getYakuCalculator(paixing);
+
+        console.log(cardsString);
+        console.log(res);
     }
 }
 export default Game;

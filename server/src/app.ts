@@ -8,7 +8,7 @@ import Game from './Game.ts';
 const PORT: number = 3000;
 const wss: WebSocketServer = new WebSocketServer({ port: PORT });
 
-const game: Game = new Game(true, true, false, false, false, false);
+const game: Game = new Game(true, true, false, false, false, false, false);
 
 
 wss.on('connection', (ws: WebSocket) => {
@@ -25,5 +25,5 @@ wss.on('connection', (ws: WebSocket) => {
 	});
 });
 
-
+//game.Test();
 console.log(`running on port ${PORT}`);
